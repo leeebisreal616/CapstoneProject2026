@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const exams = {
   personality: {
@@ -49,9 +49,19 @@ const exams = {
 function ConfirmModal({ exam, answers, onConfirm, onReview }) {
   const total = exam.questions.length
   const answered = answers.filter(a => a !== null).length
+
+  useEffect(() => {
+    const handleEscape = (e) => { if (e.key === 'Escape') onReview() }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onReview])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-5"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-5"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onReview() }}
+    >
       <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-[fadeUp_.2s_ease]">
         <div className="w-14 h-14 rounded-full bg-[#E1F5EE] flex items-center justify-center mx-auto mb-4">
           <svg viewBox="0 0 24 24" fill="none" stroke="#085041" strokeWidth={1.8} className="w-7 h-7">

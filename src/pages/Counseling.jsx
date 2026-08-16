@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useSearchParams } from 'react-router-dom'
 import { sanitizeFormData } from '../utils/sanitize'
 
 const inputCls = (error) =>
@@ -67,12 +68,17 @@ function RadioGroup({ name, options, register, rules, error, inline = true }) {
 
 export default function Counseling({ showToast }) {
   const [submitted, setSubmitted] = useState(false)
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm()
+  const [searchParams] = useSearchParams()
+  const isRoutine = searchParams.get('type') === 'routine'
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    defaultValues: isRoutine ? { reason: ['Routine Check-in'] } : {}
+  })
 
   const onSubmit = async (data) => {
     await new Promise(r => setTimeout(r, 800))
     const cleanData = sanitizeFormData(data)
-    console.log('Counseling Request (sanitized):', cleanData)
+    // TODO: Replace with real API call once backend is connected
+    // await fetch('/api/counseling-requests', { method: 'POST', body: JSON.stringify(cleanData) })
     reset()
     setSubmitted(true)
   }
@@ -92,11 +98,7 @@ export default function Counseling({ showToast }) {
   )
 
   const today = new Date().toISOString().split('T')[0]
-  const forms = [
-  { label: 'Counseling Request Form', file: '/forms/counseling-request-form.pdf' },
-  { label: 'Informed Consent Form', file: '/forms/informed-consent-form.pdf' },
-  { label: 'Individual Interview Form', file: '/forms/individual-interview-form.pdf' },
-]
+  const forms = ['Counseling Request Form', 'Informed Consent Form', 'Individual Interview Form']
 
   return (
     <div>
@@ -104,6 +106,17 @@ export default function Counseling({ showToast }) {
         <h2 className="text-[20px] font-bold text-[#085041]">Counseling & Consultation</h2>
         <p className="text-[13px] text-[#0F6E56] mt-1">Fill out the official counseling request form or download forms below.</p>
       </div>
+
+      {isRoutine && (
+        <div className="px-4 pt-4 max-w-6xl mx-auto">
+          <div className="bg-[#085041] rounded-xl px-4 py-3 flex items-center gap-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#9FE1CB" strokeWidth={1.8} className="w-5 h-5 flex-shrink-0">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p className="text-[13px] text-white">You're booking a <strong>Routine Interview</strong> — this is a scheduled periodic check-in, not a general concern request.</p>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 py-5 md:grid md:grid-cols-2 md:gap-6 md:max-w-6xl md:mx-auto">
         {/* MAIN FORM */}
@@ -279,12 +292,12 @@ export default function Counseling({ showToast }) {
             <p className="text-[15px] font-semibold text-gray-900 mb-2 pb-3 border-b border-gray-100">📄 Official GCO Forms</p>
             <p className="text-[13px] text-gray-500 mb-4 leading-relaxed">Download and complete the required forms before your session.</p>
             {forms.map(f => (
-  <div key={f.label} className="flex items-center gap-3 px-3.5 py-3 bg-[#f4f9f7] border border-[#e0ece8] rounded-xl mb-2 last:mb-0">
-    <span className="text-[13px] font-medium text-gray-900 flex-1">{f.label}</span>
-    <a href={f.file} download
-      className="bg-[#E1F5EE] text-[#085041] border border-[#9FE1CB] text-[12px] font-bold px-3.5 py-2 rounded-full flex-shrink-0">
-      Download
-              </a>
+              <div key={f} className="flex items-center gap-3 px-3.5 py-3 bg-[#f4f9f7] border border-[#e0ece8] rounded-xl mb-2 last:mb-0">
+                <span className="text-[13px] font-medium text-gray-900 flex-1">{f}</span>
+                <button onClick={() => showToast?.('⬇️ Downloading...')}
+                  className="bg-[#E1F5EE] text-[#085041] border border-[#9FE1CB] text-[12px] font-bold px-3.5 py-2 rounded-full flex-shrink-0">
+                  Download
+                </button>
               </div>
             ))}
           </div>
@@ -309,4 +322,4 @@ export default function Counseling({ showToast }) {
       </div>
     </div>
   )
-}
+} 
