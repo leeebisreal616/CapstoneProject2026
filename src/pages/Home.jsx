@@ -54,7 +54,7 @@ export default function Home({ navigate }) {
               <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${a.color}`}/>
               <div>
                 <p className="text-[13px] font-semibold text-gray-900 mb-1">{a.title}</p>
-                <p className="text-[12px] text-gray-500 leading-relaxed">{a.desc}</p>
+                <p className="text-[12px] text-gray-600 leading-relaxed">{a.desc}</p>
                 <p className="text-[11px] text-[#0F6E56] font-medium mt-1">{a.date}</p>
               </div>
             </div>
@@ -66,7 +66,7 @@ export default function Home({ navigate }) {
       <div className="px-4 pb-5">
         <p className="text-[11px] font-bold uppercase tracking-wider text-[#1D9E75] mb-1">Our Services</p>
         <p className="text-[20px] font-bold text-gray-900 mb-1">What We Offer</p>
-        <p className="text-[13px] text-gray-500 mb-4">Four core service areas to support every CvSU Imus student.</p>
+        <p className="text-[13px] text-gray-600 mb-4">Four core service areas to support every CvSU Imus student.</p>
         <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
           {services.map(s => (
             <button key={s.id} onClick={() => navigate(s.id)}
@@ -76,7 +76,7 @@ export default function Home({ navigate }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-semibold text-gray-900 mb-0.5">{s.title}</p>
-                <p className="text-[12px] text-gray-500">{s.desc}</p>
+                <p className="text-[12px] text-gray-600">{s.desc}</p>
               </div>
               <IconChevronRight stroke="#ccc"/>
             </button>
@@ -92,7 +92,7 @@ export default function Home({ navigate }) {
           {stats.map((s, i) => (
             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
               <p className="text-[22px] font-bold text-[#085041]">{s.value}</p>
-              <p className="text-[12px] text-gray-500 mt-0.5">{s.label}</p>
+              <p className="text-[12px] text-gray-600 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>

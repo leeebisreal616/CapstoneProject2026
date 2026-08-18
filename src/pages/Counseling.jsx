@@ -14,7 +14,7 @@ const selectStyle = {
 function Field({ label, required, error, children }) {
   return (
     <div className="mb-3.5">
-      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+      <label className="flex items-center gap-1 text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1.5">
         {required && <span className="text-red-500 text-[13px]">*</span>}{label}
       </label>
       {children}
@@ -322,4 +322,4 @@ export default function Counseling({ showToast }) {
       </div>
     </div>
   )
-} 
+}
