@@ -151,7 +151,7 @@ export default function Counseling({ showToast }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Student No." required error={errors.studentNo}>
-                  <input type="text" placeholder="2021-00123" inputMode="numeric" className={inputCls(errors.studentNo)}
+                  <input type="text" placeholder="2023XXXXXX" inputMode="numeric" className={inputCls(errors.studentNo)}
                     {...register('studentNo', { required: 'Required' })}/>
                 </Field>
                 <Field label="Contact No." required error={errors.contactNo}>
@@ -270,6 +270,12 @@ export default function Counseling({ showToast }) {
                 </Field>
               </div>
 
+              <div className="bg-[#f4f9f7] border border-[#d1e5de] rounded-xl p-3.5 mb-4">
+                <p className="text-[11px] text-gray-600 leading-relaxed">
+                  By submitting this form, you consent to the collection and processing of your personal data by the CvSU Imus GCO in accordance with the Data Privacy Act of 2012 (RA 10173). Your information will be kept confidential and used only for counseling and guidance purposes.
+                </p>
+              </div>
+
               <button type="submit" disabled={isSubmitting}
                 className={`w-full py-4 rounded-full text-[16px] font-semibold mt-1 transition-all ${isSubmitting ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#085041] text-white'}`}>
                 {isSubmitting ? (
@@ -313,7 +319,7 @@ export default function Counseling({ showToast }) {
           </div>
 
           <div className="bg-[#085041] rounded-2xl p-5 text-white">
-            <p className="text-[14px] font-semibold mb-3">📍 Contact Information</p>
+            <p className="text-[14px] font-semibold mb-3">Contact Information</p>
             <p className="text-[13px] text-white/80 leading-relaxed mb-2">Cavite Civic Center, Palico IV, Imus, Cavite</p>
             <p className="text-[13px] text-white/80 leading-relaxed mb-2">(046) 471-66-07 / (046) 471-67-70 / (046) 686-2349</p>
             <p className="text-[13px] text-white/80">www.cvsu.edu.ph</p>

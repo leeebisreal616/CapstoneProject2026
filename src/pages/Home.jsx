@@ -9,16 +9,16 @@ export default function Home({ navigate }) {
   ]
 
   const announcements = [
-    { color: 'bg-red-500', title: 'No Walk-in Sessions — July 18, 2025', desc: 'The GCO office will be closed for an internal seminar. Online appointment booking remains open.', date: 'July 15, 2025' },
+    { color: 'bg-red-500', title: 'No Walk-in Sessions on July 18, 2025', desc: 'The GCO office will be closed for an internal seminar. Online appointment booking remains open.', date: 'July 15, 2025' },
     { color: 'bg-yellow-500', title: 'Reminder: Submit Inventory Forms', desc: 'All first-year students are required to complete the Needs Assessment and Student Profile Inventory Form before August 1, 2025.', date: 'July 10, 2025' },
-    { color: 'bg-[#1D9E75]', title: 'Mental Health Week — July 21–25, 2025', desc: 'The GCO invites all students to join our Mental Health Awareness Week activities. Free counseling sessions available all week.', date: 'July 8, 2025' },
+    { color: 'bg-[#1D9E75]', title: 'Mental Health Week: July 21 to 25, 2025', desc: 'The GCO invites all students to join our Mental Health Awareness Week activities. Free counseling sessions available all week.', date: 'July 8, 2025' },
   ]
 
   const stats = [
     { value: '4', label: 'Core services' },
     { value: '15', label: 'Modules' },
     { value: 'Free', label: 'For all students' },
-    { value: '8–5PM', label: 'Mon – Fri' },
+    { value: '8-5PM', label: 'Mon to Fri' },
   ]
 
   const contactItems = [
@@ -124,9 +124,12 @@ export default function Home({ navigate }) {
 
       {/* Footer */}
       <div className="bg-[#085041] text-center py-5 px-4 text-[12px] leading-relaxed" style={{color:'rgba(255,255,255,0.7)'}}>
-        <p className="text-white font-semibold text-[13px] mb-1">Guidance &amp; Counseling Office — CvSU Imus Campus</p>
-        <p>Cavite State University · Imus Campus · Imus, Cavite</p>
-        <p>All services are free and confidential for enrolled students.</p>
+        <p className="text-white font-semibold text-[13px] mb-1">Guidance & Counseling Office, CvSU Imus Campus</p>
+        <p>Cavite State University. Imus Campus. Imus, Cavite.</p>
+        <p className="mb-2">All services are free and confidential for enrolled students.</p>
+        <p className="text-[11px]" style={{color:'rgba(255,255,255,0.55)'}}>
+          This portal collects and processes personal data in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173). Your information is kept confidential and used solely for guidance and counseling purposes.
+        </p>
       </div>
     </div>
   )

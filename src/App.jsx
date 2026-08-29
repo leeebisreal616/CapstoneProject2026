@@ -1,8 +1,9 @@
 import { useState, useCallback, createContext, useContext } from 'react'
-import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import Topbar from './components/Topbar'
 import BottomNav from './components/BottomNav'
 import ErrorBoundary from './components/ErrorBoundary'
+import OfflineBanner from './components/OfflineBanner'
 import Home from './pages/Home'
 import Counseling from './pages/Counseling'
 import Modules from './pages/Modules'
@@ -55,34 +56,34 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [navigate])
 
-  // Get current page id from URL for nav highlighting
   const pageId = location.pathname === '/' ? 'home' : location.pathname.replace('/', '')
 
   return (
-    <div className="bg-[#f4f9f7] min-h-screen">
-      <Topbar page={pageId} navigate={goTo} />
-      <Toast message={toast.message} visible={toast.visible} />
-      <div className="pt-[60px] pb-20 md:pb-0">
-        <Routes>
-          <Route path="/" element={<Home navigate={goTo} />} />
-          <Route path="/counseling" element={<Counseling showToast={showToast} />} />
-          <Route path="/modules" element={<Modules showToast={showToast} />} />
-          <Route path="/inventory" element={<Inventory navigate={goTo} showToast={showToast} />} />
-          <Route path="/assessment" element={<Assessment showToast={showToast} />} />
-          <Route path="*" element={<NotFound navigate={goTo} />} />
-        </Routes>
+    <ToastContext.Provider value={showToast}>
+      <div className="bg-[#f4f9f7] min-h-screen">
+        <OfflineBanner />
+        <Topbar page={pageId} navigate={goTo} />
+        <Toast message={toast.message} visible={toast.visible} />
+        <div className="pt-[60px] pb-20 md:pb-0">
+          <Routes>
+            <Route path="/" element={<Home navigate={goTo} />} />
+            <Route path="/counseling" element={<Counseling showToast={showToast} />} />
+            <Route path="/modules" element={<Modules showToast={showToast} />} />
+            <Route path="/inventory" element={<Inventory navigate={goTo} showToast={showToast} />} />
+            <Route path="/assessment" element={<Assessment showToast={showToast} />} />
+            <Route path="*" element={<NotFound navigate={goTo} />} />
+          </Routes>
+        </div>
+        <BottomNav page={pageId} navigate={goTo} />
       </div>
-      <BottomNav page={pageId} navigate={goTo} />
-    </div>
+    </ToastContext.Provider>
   )
 }
 
 export default function App() {
   return (
     <ErrorBoundary>
-      <ToastContext.Provider value={null}>
-        <AppContent />
-      </ToastContext.Provider>
+      <AppContent />
     </ErrorBoundary>
   )
 }

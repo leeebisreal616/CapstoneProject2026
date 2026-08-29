@@ -100,6 +100,14 @@ function WizardShell({ title, subtitle, steps, currentStep, onNext, onPrev, onCa
         {/* Step content */}
         {children}
 
+        {isLast && (
+          <div className="bg-[#f4f9f7] border border-[#d1e5de] rounded-xl p-3.5 mt-5">
+            <p className="text-[11px] text-gray-600 leading-relaxed">
+              By submitting this form, you consent to the collection and processing of your personal data by the CvSU Imus GCO in accordance with the Data Privacy Act of 2012 (RA 10173). Your information will be kept confidential and used only for counseling and guidance purposes.
+            </p>
+          </div>
+        )}
+
         {/* Nav */}
         <div className="flex gap-3 mt-6">
           <button type="button" onClick={currentStep === 0 ? onCancel : onPrev}
@@ -165,8 +173,8 @@ function NeedsAssessment({ onBack, onSubmit }) {
               {...register('fullName', { required: 'Full name is required', minLength: { value: 3, message: 'At least 3 characters' } })}/>
           </Field>
           <Field label="Student ID" required error={errors.studentId}>
-            <input type="text" placeholder="2021-00123" inputMode="numeric" className={inputCls(errors.studentId)}
-              {...register('studentId', { required: 'Student ID is required', pattern: { value: /^\d{4}-\d{5}$/, message: 'Format: YYYY-NNNNN' } })}/>
+            <input type="text" placeholder="202311325" inputMode="numeric" className={inputCls(errors.studentId)}
+              {...register('studentId', { required: 'Student ID is required' })}/>
           </Field>
           <Field label="Course & Year" required error={errors.courseYear}>
             <input type="text" placeholder="BSIT 3-E" className={inputCls(errors.courseYear)}
@@ -267,8 +275,8 @@ function StudentProfile({ onBack, onSubmit }) {
               {...register('nickname', { required: 'Nickname is required' })}/>
           </Field>
           <Field label="Student ID" required error={errors.studentId}>
-            <input type="text" placeholder="2021-00123" inputMode="numeric" className={inputCls(errors.studentId)}
-              {...register('studentId', { required: 'Student ID is required', pattern: { value: /^\d{4}-\d{5}$/, message: 'Format: YYYY-NNNNN' } })}/>
+            <input type="text" placeholder="202311325" inputMode="numeric" className={inputCls(errors.studentId)}
+              {...register('studentId', { required: 'Student ID is required' })}/>
           </Field>
           <Field label="Date of Birth" required error={errors.dob}>
             <input type="date" className={inputCls(errors.dob)}
@@ -394,7 +402,7 @@ export default function Inventory({ navigate }) {
   const items = [
     { title: 'Needs Assessment Form', desc: 'Identify your primary needs and areas requiring guidance support.', meta: '4 steps · ~5 min', action: () => setView('needs') },
     { title: 'Student Profile Inventory Form', desc: 'Provide background information for your counseling record.', meta: '5 steps · ~8 min', action: () => setView('profile') },
-    { title: 'Routine Interview', desc: 'Schedule a routine check-in session with a guidance counselor.', meta: null, action: () => navigate('/counseling?type=routine') },
+    { title: 'Routine Interview', desc: 'A required periodic check-in with a guidance counselor, separate from a general concern-based appointment.', meta: null, action: () => navigate('/counseling?type=routine') },
   ]
 
   if (view === 'needs') return <NeedsAssessment onBack={() => setView('list')} onSubmit={() => setView('success')}/>

@@ -107,7 +107,7 @@ export default function Modules({ showToast }) {
               {sec === 'Practical Tips' && (
                 <ul className="flex flex-col gap-2">
                   {[
-                    'Start small — apply one new strategy this week',
+                    'Start small, apply one new strategy this week',
                     'Track your progress in a journal or planner',
                     'Reach out to the GCO if you need additional support'
                   ].map((pt, i) => (
