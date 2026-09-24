@@ -98,7 +98,11 @@ export default function Counseling({ showToast }) {
   )
 
   const today = new Date().toISOString().split('T')[0]
-  const forms = ['Counseling Request Form', 'Informed Consent Form', 'Individual Interview Form']
+  const forms = [
+    { label: 'Counseling Request Form', file: '/forms/counseling-request-form.pdf' },
+    { label: 'Informed Consent Form', file: '/forms/informed-consent-form.pdf' },
+    { label: 'Individual Interview Form', file: '/forms/individual-interview-form.pdf' },
+  ]
 
   return (
     <div>
@@ -151,7 +155,7 @@ export default function Counseling({ showToast }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Student No." required error={errors.studentNo}>
-                  <input type="text" placeholder="2023XXXXXX" inputMode="numeric" className={inputCls(errors.studentNo)}
+                  <input type="text" placeholder="202311325" inputMode="numeric" className={inputCls(errors.studentNo)}
                     {...register('studentNo', { required: 'Required' })}/>
                 </Field>
                 <Field label="Contact No." required error={errors.contactNo}>
@@ -298,12 +302,12 @@ export default function Counseling({ showToast }) {
             <p className="text-[15px] font-semibold text-gray-900 mb-2 pb-3 border-b border-gray-100">📄 Official GCO Forms</p>
             <p className="text-[13px] text-gray-500 mb-4 leading-relaxed">Download and complete the required forms before your session.</p>
             {forms.map(f => (
-              <div key={f} className="flex items-center gap-3 px-3.5 py-3 bg-[#f4f9f7] border border-[#e0ece8] rounded-xl mb-2 last:mb-0">
-                <span className="text-[13px] font-medium text-gray-900 flex-1">{f}</span>
-                <button onClick={() => showToast?.('⬇️ Downloading...')}
+              <div key={f.label} className="flex items-center gap-3 px-3.5 py-3 bg-[#f4f9f7] border border-[#e0ece8] rounded-xl mb-2 last:mb-0">
+                <span className="text-[13px] font-medium text-gray-900 flex-1">{f.label}</span>
+                <a href={f.file} download
                   className="bg-[#E1F5EE] text-[#085041] border border-[#9FE1CB] text-[12px] font-bold px-3.5 py-2 rounded-full flex-shrink-0">
                   Download
-                </button>
+                </a>
               </div>
             ))}
           </div>

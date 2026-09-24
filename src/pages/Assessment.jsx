@@ -151,7 +151,7 @@ function ExamScreen({ type, onBack }) {
             <p className="text-[13px] text-amber-800 leading-relaxed">🔒 <strong>Confidential</strong> — These results are strictly confidential and only visible to your licensed GCO counselor.</p>
           </div>
           <button onClick={onBack} className="bg-[#085041] text-white text-[15px] font-semibold py-4 rounded-full w-full">
-            Back to Assessment
+            Back to Initial Assessment
           </button>
         </div>
       </div>
@@ -243,7 +243,7 @@ export default function Assessment() {
   return (
     <div>
       <div className="bg-[#E1F5EE] border-b border-[#9FE1CB] px-4 py-5">
-        <h2 className="text-[20px] font-bold text-[#085041]">Assessment & Screening</h2>
+        <h2 className="text-[20px] font-bold text-[#085041]">Initial Assessment</h2>
         <p className="text-[13px] text-[#0F6E56] mt-1">Complete all required profiling exams.</p>
       </div>
       <div className="px-4 py-5 flex flex-col gap-4 max-w-2xl mx-auto md:grid md:grid-cols-2">

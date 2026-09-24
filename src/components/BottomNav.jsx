@@ -1,11 +1,11 @@
-import { IconHome, IconCounseling, IconModules, IconInventory, IconAssessment } from './Icons'
+import { IconHome, IconAssessment, IconModules, IconCalendar, IconHistory } from './Icons'
 
 const tabs = [
   { id: 'home', label: 'Home', path: '/', Icon: IconHome },
-  { id: 'counseling', label: 'Counseling', path: '/counseling', Icon: IconCounseling },
+  { id: 'initial-assessment', label: 'Assessment', path: '/initial-assessment', Icon: IconAssessment },
   { id: 'modules', label: 'Modules', path: '/modules', Icon: IconModules },
-  { id: 'inventory', label: 'Inventory', path: '/inventory', Icon: IconInventory },
-  { id: 'assessment', label: 'Assessment', path: '/assessment', Icon: IconAssessment },
+  { id: 'book-appointment', label: 'Book', path: '/book-appointment', Icon: IconCalendar },
+  { id: 'appointment-history', label: 'History', path: '/appointment-history', Icon: IconHistory },
 ]
 
 export default function BottomNav({ page, navigate }) {

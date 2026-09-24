@@ -1,5 +1,5 @@
-import { useState, useCallback, createContext, useContext } from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { useState, useCallback, createContext, useContext, useEffect } from 'react'
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import Topbar from './components/Topbar'
 import BottomNav from './components/BottomNav'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -7,8 +7,10 @@ import OfflineBanner from './components/OfflineBanner'
 import Home from './pages/Home'
 import Counseling from './pages/Counseling'
 import Modules from './pages/Modules'
-import Inventory from './pages/Inventory'
 import Assessment from './pages/Assessment'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminLogin from './pages/AdminLogin'
+import { isLoggedIn } from './utils/adminAuth'
 
 // Toast Context
 export const ToastContext = createContext(null)
@@ -39,7 +41,23 @@ function NotFound({ navigate }) {
   )
 }
 
-function AppContent() {
+// Appointment History placeholder (will be built in Step 7)
+function AppointmentHistory() {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center px-5">
+      <div className="w-16 h-16 rounded-full bg-[#E1F5EE] flex items-center justify-center mx-auto mb-4">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#085041" strokeWidth={1.8} className="w-8 h-8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1118 2m0 0l2 2m-2-2l-2 2"/>
+        </svg>
+      </div>
+      <p className="text-[20px] font-bold text-gray-900 mb-2">Appointment History</p>
+      <p className="text-[14px] text-gray-500">Your booking history will appear here.</p>
+    </div>
+  )
+}
+
+// Student-facing layout: Topbar + BottomNav + OfflineBanner
+function StudentLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [toast, setToast] = useState({ message: '', visible: false })
@@ -67,10 +85,14 @@ function AppContent() {
         <div className="pt-[60px] pb-20 md:pb-0">
           <Routes>
             <Route path="/" element={<Home navigate={goTo} />} />
-            <Route path="/counseling" element={<Counseling showToast={showToast} />} />
+            <Route path="/initial-assessment" element={<Assessment showToast={showToast} />} />
             <Route path="/modules" element={<Modules showToast={showToast} />} />
-            <Route path="/inventory" element={<Inventory navigate={goTo} showToast={showToast} />} />
-            <Route path="/assessment" element={<Assessment showToast={showToast} />} />
+            <Route path="/book-appointment" element={<Counseling showToast={showToast} />} />
+            <Route path="/appointment-history" element={<AppointmentHistory />} />
+            {/* Redirects for old routes */}
+            <Route path="/counseling" element={<Navigate to="/book-appointment" replace />} />
+            <Route path="/assessment" element={<Navigate to="/initial-assessment" replace />} />
+            <Route path="/inventory" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound navigate={goTo} />} />
           </Routes>
         </div>
@@ -80,10 +102,30 @@ function AppContent() {
   )
 }
 
+// Gated admin area: shows login form until authenticated
+function AdminArea() {
+  const [authed, setAuthed] = useState(isLoggedIn())
+
+  useEffect(() => {
+    setAuthed(isLoggedIn())
+  }, [])
+
+  if (!authed) {
+    return <AdminLogin onSuccess={() => setAuthed(true)} />
+  }
+
+  return <AdminDashboard onLogout={() => setAuthed(false)} />
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <Routes>
+        {/* Admin has its own completely separate layout, no student nav, gated by login */}
+        <Route path="/admin/*" element={<AdminArea />} />
+        {/* Everything else uses the student layout */}
+        <Route path="/*" element={<StudentLayout />} />
+      </Routes>
     </ErrorBoundary>
   )
 }

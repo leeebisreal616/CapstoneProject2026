@@ -194,14 +194,24 @@ export default function Modules({ showToast }) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto px-4 py-3 scrollbar-none">
-        {filters.map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            className={`text-[13px] font-semibold px-4 py-2 rounded-full whitespace-nowrap flex-shrink-0 border-[1.5px] transition-all ${filter === f ? 'bg-[#085041] text-white border-[#085041]' : 'bg-white text-gray-500 border-[#d1e5de]'}`}>
-            {filterLabels[f]}
-          </button>
-        ))}
+      {/* Category Filter */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="relative w-full sm:w-64">
+          <select
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            className="appearance-none w-full bg-white border-[1.5px] border-[#d1e5de] rounded-full px-4 py-2.5 pr-10 text-[14px] font-semibold text-gray-700 focus:border-[#085041] focus:ring-2 focus:ring-[#085041]/10 outline-none transition-all cursor-pointer"
+          >
+            {filters.map(f => (
+              <option key={f} value={f}>{filterLabels[f]}</option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#085041" strokeWidth={2.5} className="w-4 h-4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </div>
       </div>
 
       {/* Module Grid */}

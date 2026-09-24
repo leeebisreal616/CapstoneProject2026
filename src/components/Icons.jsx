@@ -146,3 +146,19 @@ export function IconQuestion({ stroke = 'currentColor', className = 'w-8 h-8' })
     </svg>
   )
 }
+
+export function IconCalendar({ stroke = 'currentColor', className = 'w-5 h-5' }) {
+  return (
+    <svg {...base({ stroke, className })}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  )
+}
+
+export function IconHistory({ stroke = 'currentColor', className = 'w-5 h-5' }) {
+  return (
+    <svg {...base({ stroke, className })}>
+      <path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1118 2m0 0l2 2m-2-2l-2 2"/>
+    </svg>
+  )
+}
