@@ -5,7 +5,7 @@ import BottomNav from './components/BottomNav'
 import ErrorBoundary from './components/ErrorBoundary'
 import OfflineBanner from './components/OfflineBanner'
 import Home from './pages/Home'
-import Counseling from './pages/Counseling'
+import BookAppointment from './pages/BookAppointment'
 import Modules from './pages/Modules'
 import Assessment from './pages/Assessment'
 import AdminDashboard from './pages/AdminDashboard'
@@ -87,7 +87,7 @@ function StudentLayout() {
             <Route path="/" element={<Home navigate={goTo} />} />
             <Route path="/initial-assessment" element={<Assessment showToast={showToast} />} />
             <Route path="/modules" element={<Modules showToast={showToast} />} />
-            <Route path="/book-appointment" element={<Counseling showToast={showToast} />} />
+            <Route path="/book-appointment" element={<BookAppointment showToast={showToast} />} />
             <Route path="/appointment-history" element={<AppointmentHistory />} />
             {/* Redirects for old routes */}
             <Route path="/counseling" element={<Navigate to="/book-appointment" replace />} />
