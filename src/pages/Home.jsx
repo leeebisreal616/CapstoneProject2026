@@ -1,135 +1,66 @@
-import { IconCounseling, IconModules, IconInventory, IconAssessment, IconChevronRight, IconLocation, IconMail, IconClock, IconPhone } from '../components/Icons'
+import { IconCounseling, IconModules, IconAssessment, IconChevronRight } from '../components/Icons'
 
 export default function Home({ navigate }) {
-  const services = [
-    { id: 'counseling', title: 'Counseling & Consultation', desc: 'Book sessions and submit forms online', Icon: IconCounseling },
-    { id: 'modules', title: 'Information Service', desc: 'Academic, social-emotional & career modules', Icon: IconModules },
-    { id: 'inventory', title: 'Individual Inventory', desc: 'Needs assessment & student profile forms', Icon: IconInventory },
-    { id: 'assessment', title: 'Assessment & Screening', desc: 'Personality & well-being profiling exams', Icon: IconAssessment },
-  ]
-
-  const announcements = [
-    { color: 'bg-red-500', title: 'No Walk-in Sessions on July 18, 2025', desc: 'The GCO office will be closed for an internal seminar. Online appointment booking remains open.', date: 'July 15, 2025' },
-    { color: 'bg-yellow-500', title: 'Reminder: Submit Inventory Forms', desc: 'All first-year students are required to complete the Needs Assessment and Student Profile Inventory Form before August 1, 2025.', date: 'July 10, 2025' },
-    { color: 'bg-[#1D9E75]', title: 'Mental Health Week: July 21 to 25, 2025', desc: 'The GCO invites all students to join our Mental Health Awareness Week activities. Free counseling sessions available all week.', date: 'July 8, 2025' },
-  ]
-
-  const stats = [
-    { value: '4', label: 'Core services' },
-    { value: '15', label: 'Modules' },
-    { value: 'Free', label: 'For all students' },
-    { value: '8-5PM', label: 'Mon to Fri' },
-  ]
-
-  const contactItems = [
-    { Icon: IconLocation, label: 'Location', value: 'Administration Building, Ground Floor\nCvSU Imus Campus, Imus, Cavite' },
-    { Icon: IconMail, label: 'Email', value: 'gco.imus@cvsu.edu.ph' },
-    { Icon: IconClock, label: 'Office Hours', value: 'Monday – Friday\n8:00 AM – 12:00 PM & 1:00 PM – 5:00 PM' },
-    { Icon: IconPhone, label: 'Phone', value: '(046) XXX-XXXX' },
-  ]
-
   return (
-    <div>
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-[#085041] to-[#0d7a5f] px-5 pt-7 pb-9 text-white">
-        <div className="inline-flex items-center gap-1.5 bg-white bg-opacity-10 border border-white border-opacity-20 text-[11px] px-3 py-1 rounded-full mb-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"/>
-          Portal is live
+    <div className="bg-[#f6f8f7] min-h-[calc(100vh-64px)] flex flex-col">
+      {/* Top */}
+      <div className="bg-[#085041] text-white px-6 md:px-10 py-7 flex flex-col md:flex-row gap-8 items-start">
+        <div className="flex-1">
+          <h1 className="text-[32px] md:text-[38px] font-bold leading-[1.05]">Your well-being is<br/>our priority</h1>
+          <p className="text-[13px] text-white/60 mt-3 max-w-[380px]">Guidance and counseling portal for CvSU Imus students. Free, confidential, Mon to Fri.</p>
+          <div className="flex gap-2 mt-5">
+            <button onClick={() => navigate('assessment')} className="bg-white text-[#085041] text-[13px] font-bold px-5 py-2.5 rounded-full transition-all duration-200 hover:shadow-[0_4px_16px_rgba(255,255,255,0.25)] hover:-translate-y-[1px] active:scale-[0.98]">Take Assessment</button>
+            <button onClick={() => navigate('counseling')} className="bg-white/10 border border-white/20 text-white text-[13px] font-semibold px-5 py-2.5 rounded-full transition-all duration-200 hover:bg-white/15 hover:border-white/30 hover:-translate-y-[1px] active:scale-[0.98]">Book Now</button>
+          </div>
         </div>
-        <h1 className="text-[23px] font-bold leading-tight tracking-tight mb-2">Your Well-Being is Our Priority</h1>
-        <p className="text-[14px] leading-relaxed mb-5" style={{opacity:0.82}}>Access counseling, wellness resources, and assessments — all in one place for CvSU Imus students.</p>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => navigate('counseling')} className="bg-white text-[#085041] text-[14px] font-bold px-5 py-3 rounded-full">Book Appointment</button>
-          <button onClick={() => navigate('modules')} className="bg-transparent text-white border border-white border-opacity-50 text-[14px] font-semibold px-5 py-3 rounded-full">Browse Modules</button>
-        </div>
-      </div>
-
-      {/* Announcements */}
-      <div className="px-4 py-5">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-[#1D9E75] mb-1">Notice Board</p>
-        <p className="text-[20px] font-bold text-gray-900 mb-4">Announcements</p>
-        <div className="flex flex-col gap-2 md:grid md:grid-cols-2">
-          {announcements.map((a, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex gap-3">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${a.color}`}/>
-              <div>
-                <p className="text-[13px] font-semibold text-gray-900 mb-1">{a.title}</p>
-                <p className="text-[12px] text-gray-600 leading-relaxed">{a.desc}</p>
-                <p className="text-[11px] text-[#0F6E56] font-medium mt-1">{a.date}</p>
-              </div>
+        {/* Right card */}
+        <div className="w-full md:w-[360px] bg-[#0a5a49] border border-white/10 rounded-2xl p-4 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:border-white/20">
+          <p className="text-[10px] font-bold tracking-widest text-white/40 mb-3">GUIDANCE & COUNSELING OFFICE</p>
+          <div className="space-y-2 text-[12px]">
+            <div className="flex gap-3"><span className="text-white/40 w-[50px]">Location</span><span className="text-white">Admin Bldg, Ground Floor</span></div>
+            <div className="flex gap-3"><span className="text-white/40 w-[50px]">Hours</span><span className="text-white">8AM-12PM, 1PM-5PM</span></div>
+            <div className="flex gap-3"><span className="text-white/40 w-[50px]">Email</span><span className="text-white text-[11px]">cvsuimus.guidance@cvsu.edu.ph</span></div>
+            <div className="flex gap-3"><span className="text-white/40 w-[50px]">Facebook</span><a href="https://www.facebook.com/GCOCvSUImus" target="_blank" className="text-white underline decoration-white/20 hover:decoration-white transition-all">GCOCvSUImus</a></div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-white/10">
+            <p className="text-[10px] font-bold text-amber-200/70 tracking-wider mb-1.5">NCMH CRISIS HOTLINE</p>
+            <div className="flex gap-2">
+              <span className="bg-white text-[#085041] text-[11px] font-bold px-2 py-1 rounded transition-all hover:shadow-[0_2px_8px_rgba(255,255,255,0.2)]">1553</span>
+              <span className="text-[11px] text-white/80 py-1">1800-1888-1553</span>
             </div>
-          ))}
+            <p className="text-[10px] text-white/50 mt-1.5">09190571553 (Smart) • 09178998727 (Globe/TM)</p>
+          </div>
         </div>
       </div>
 
-      {/* Services */}
-      <div className="px-4 pb-5">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-[#1D9E75] mb-1">Our Services</p>
-        <p className="text-[20px] font-bold text-gray-900 mb-1">What We Offer</p>
-        <p className="text-[13px] text-gray-600 mb-4">Four core service areas to support every CvSU Imus student.</p>
-        <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
-          {services.map(s => (
-            <button key={s.id} onClick={() => navigate(s.id)}
-              className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 text-left transition-transform">
-              <div className="w-[42px] h-[42px] rounded-xl bg-[#E1F5EE] flex items-center justify-center flex-shrink-0 text-[#085041]">
-                <s.Icon className="w-[21px] h-[21px]"/>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold text-gray-900 mb-0.5">{s.title}</p>
-                <p className="text-[12px] text-gray-600">{s.desc}</p>
-              </div>
-              <IconChevronRight stroke="#ccc"/>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="px-4 pb-5">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-[#1D9E75] mb-1">At a Glance</p>
-        <p className="text-[20px] font-bold text-gray-900 mb-4">Office Info</p>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 mb-3">
-          {stats.map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-              <p className="text-[22px] font-bold text-[#085041]">{s.value}</p>
-              <p className="text-[12px] text-gray-600 mt-0.5">{s.label}</p>
+      {/* Bottom 3 cards - SAME HOVER AS ASSESSMENT */}
+      <div className="flex-1 px-4 md:px-10 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[
+          { id:'counseling', title:'Counseling', desc:'Book a one-on-one session. Confidential and free.', Icon: IconCounseling, cta:'Book a session' },
+          { id:'assessment', title:'Initial Assessment', desc:'Required first step before booking. 5-10 mins only.', Icon: IconAssessment, cta:'Start assessment' },
+          { id:'modules', title:'Wellness Modules', desc:'Self-paced resources for academic and emotional well-being.', Icon: IconModules, cta:'Browse modules' },
+        ].map(item => (
+          <button key={item.id} onClick={() => navigate(item.id)} className="bg-white rounded-2xl border border-gray-200 p-6 text-left group cursor-pointer flex flex-col transition-all duration-200 hover:shadow-[0_8px_24px_rgba(8,80,65,0.12)] hover:border-[#085041]/20 hover:-translate-y-[2px] active:scale-[0.99]">
+            <div className="w-10 h-10 rounded-xl bg-[#E8F5F1] flex items-center justify-center text-[#085041] mb-4 transition-all duration-200 group-hover:bg-[#085041] group-hover:text-white group-hover:shadow-[0_4px_12px_rgba(8,80,65,0.2)]">
+              <item.Icon className="w-5 h-5"/>
             </div>
-          ))}
-        </div>
-        <div className="bg-[#E1F5EE] border border-[#9FE1CB] rounded-2xl p-4">
-          <p className="text-[13px] text-[#085041] leading-relaxed">
-            📍 <strong>GCO Office</strong> — Administration Building, CvSU Imus Campus<br/>
-            <span className="text-[12px]" style={{opacity:0.75}}>gco.imus@cvsu.edu.ph</span>
-          </p>
-        </div>
-      </div>
-
-      {/* Contact */}
-      <div className="px-4 pb-6">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-[#1D9E75] mb-1">Get in Touch</p>
-        <p className="text-[20px] font-bold text-gray-900 mb-4">Contact Us</p>
-        <div className="bg-[#085041] rounded-2xl p-5 text-white">
-          <p className="text-[15px] font-semibold mb-4">Guidance &amp; Counseling Office</p>
-          {contactItems.map((c, i) => (
-            <div key={i} className="flex gap-3 mb-3 last:mb-0">
-              <c.Icon stroke="#9FE1CB" className="w-[18px] h-[18px] flex-shrink-0 mt-0.5"/>
-              <div>
-                <p className="text-white font-semibold text-[13px]">{c.label}</p>
-                <p className="text-[13px] leading-relaxed whitespace-pre-line" style={{color:'rgba(255,255,255,0.75)'}}>{c.value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            <p className="text-[15px] font-bold text-gray-900">{item.title}</p>
+            <p className="text-[13px] text-gray-500 mt-1 flex-1 leading-relaxed">{item.desc}</p>
+            <p className="text-[12px] font-semibold text-[#085041] mt-4 flex items-center gap-1 transition-all duration-200 group-hover:gap-2">
+              {item.cta} <span className="transition-transform duration-200 group-hover:translate-x-1"><IconChevronRight stroke="#085041" /></span>
+            </p>
+          </button>
+        ))}
       </div>
 
       {/* Footer */}
-      <div className="bg-[#085041] text-center py-5 px-4 text-[12px] leading-relaxed" style={{color:'rgba(255,255,255,0.7)'}}>
-        <p className="text-white font-semibold text-[13px] mb-1">Guidance & Counseling Office, CvSU Imus Campus</p>
-        <p>Cavite State University. Imus Campus. Imus, Cavite.</p>
-        <p className="mb-2">All services are free and confidential for enrolled students.</p>
-        <p className="text-[11px]" style={{color:'rgba(255,255,255,0.55)'}}>
-          This portal collects and processes personal data in accordance with the Data Privacy Act of 2012 (Republic Act No. 10173). Your information is kept confidential and used solely for guidance and counseling purposes.
+      <div className="px-6 py-6 border-t border-gray-100 bg-white">
+        <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+          CvSU Imus Campus • Est. 2004<br className="md:hidden" />
+          <span className="hidden md:inline"> • </span>
+          Free and confidential for all enrolled students
         </p>
+        <div className="h-2 md:h-0" />
       </div>
     </div>
   )

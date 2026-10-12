@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 
 const exams = {
   personality: {
-    title: 'Profiling Exam for Personality',
+    title: 'Personality Profile',
+    desc: 'Understand your traits and behavioral tendencies.',
     questions: [
       { q: 'I enjoy meeting and talking with new people.', opts: ['Strongly Agree', 'Agree', 'Neutral', 'Disagree', 'Strongly Disagree'] },
       { q: 'I prefer to plan things ahead rather than be spontaneous.', opts: ['Strongly Agree', 'Agree', 'Neutral', 'Disagree', 'Strongly Disagree'] },
@@ -17,13 +18,14 @@ const exams = {
     ],
     score(ans) {
       const s = ans.reduce((a, b) => a + (4 - b), 0)
-      if (s >= 30) return { label: 'High Extraversion / Leadership Oriented', color: '#085041', bg: '#E1F5EE', desc: 'You tend to be outgoing, proactive, and enjoy social interaction. You may thrive in group settings and leadership roles.' }
-      if (s >= 20) return { label: 'Balanced Personality', color: '#185FA5', bg: '#e6f1fb', desc: 'You show a healthy mix of introversion and extraversion. You adapt well to different environments and can work effectively both independently and in teams.' }
-      return { label: 'Reflective / Introspective', color: '#3C3489', bg: '#ede9fe', desc: 'You tend to be thoughtful and introspective. You may thrive in roles that require careful analysis, creativity, or independent work.' }
+      if (s >= 30) return { label: 'Leadership Oriented', color: '#085041', bg: '#E8F5F1', desc: 'You tend to be outgoing, proactive, and enjoy social interaction.' }
+      if (s >= 20) return { label: 'Balanced', color: '#185FA5', bg: '#e6f1fb', desc: 'Healthy mix of introversion and extraversion. You adapt well.' }
+      return { label: 'Reflective', color: '#3C3489', bg: '#ede9fe', desc: 'Thoughtful and introspective. You thrive in roles that require careful analysis.' }
     }
   },
   wellbeing: {
-    title: 'Profiling Exam for Well-Being',
+    title: 'Well-Being Profile',
+    desc: 'Assess your mental, emotional, and physical well-being.',
     questions: [
       { q: 'Over the past week, I have felt happy and content most of the time.', opts: ['Always', 'Often', 'Sometimes', 'Rarely', 'Never'] },
       { q: 'I have been able to manage my stress effectively this week.', opts: ['Always', 'Often', 'Sometimes', 'Rarely', 'Never'] },
@@ -38,54 +40,26 @@ const exams = {
     ],
     score(ans) {
       const s = ans.reduce((a, b) => a + (4 - b), 0)
-      if (s >= 30) return { label: 'Good Overall Well-Being', color: '#085041', bg: '#E1F5EE', desc: 'You appear to be managing well across physical, emotional, and social dimensions. Keep maintaining your healthy habits.' }
-      if (s >= 18) return { label: 'Moderate Well-Being', color: '#B45309', bg: '#FEF3C7', desc: 'You show some areas of strength but may benefit from additional support. Consider speaking with a GCO counselor.' }
-      return { label: 'Needs Attention', color: '#9B1C1C', bg: '#FEE2E2', desc: 'Your responses suggest you may be experiencing challenges in several areas. We strongly encourage you to reach out to the GCO for support.' }
+      if (s >= 30) return { label: 'Good Well-Being', color: '#085041', bg: '#E8F5F1', desc: 'Managing well across physical, emotional, and social dimensions.' }
+      if (s >= 18) return { label: 'Moderate', color: '#B45309', bg: '#FEF3C7', desc: 'Some areas of strength but may benefit from additional support.' }
+      return { label: 'Needs Attention', color: '#9B1C1C', bg: '#FEE2E2', desc: 'You may be experiencing challenges. Please reach out to GCO.' }
     }
   }
 }
 
-// Confirmation Modal
-function ConfirmModal({ exam, answers, onConfirm, onReview }) {
-  const total = exam.questions.length
-  const answered = answers.filter(a => a !== null).length
-
+function ConfirmModal({ answered, total, onConfirm, onReview }) {
   useEffect(() => {
-    const handleEscape = (e) => { if (e.key === 'Escape') onReview() }
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
+    const h = (e) => { if (e.key === 'Escape') onReview() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
   }, [onReview])
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-5"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onReview() }}
-    >
-      <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-[fadeUp_.2s_ease]">
-        <div className="w-14 h-14 rounded-full bg-[#E1F5EE] flex items-center justify-center mx-auto mb-4">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#085041" strokeWidth={1.8} className="w-7 h-7">
-            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-        <h3 className="text-[18px] font-bold text-gray-900 text-center mb-2">Submit Exam?</h3>
-        <p className="text-[13px] text-gray-500 text-center leading-relaxed mb-1">
-          You have answered <strong className="text-gray-900">{answered} of {total}</strong> questions.
-        </p>
-        <p className="text-[13px] text-gray-500 text-center leading-relaxed mb-5">
-          Once submitted, you cannot change your answers.
-        </p>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
-          <p className="text-[12px] text-amber-800 text-center">🔒 Your results are confidential and only seen by your GCO counselor.</p>
-        </div>
-        <button onClick={onConfirm}
-          className="bg-[#085041] text-white text-[15px] font-semibold py-3.5 rounded-full w-full mb-2">
-          Confirm Submit
-        </button>
-        <button onClick={onReview}
-          className="border-[1.5px] border-[#9FE1CB] text-[#085041] text-[14px] font-semibold py-3 rounded-full w-full">
-          Review Answers
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-5 bg-black/40 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onReview() }}>
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-[0_16px_40px_rgba(0,0,0,0.15)]">
+        <h3 className="text-[16px] font-bold text-gray-900 text-center">Submit exam?</h3>
+        <p className="text-[13px] text-gray-500 text-center mt-2">You answered {answered} of {total}. You cannot change answers after submitting.</p>
+        <button onClick={onConfirm} className="bg-[#085041] text-white text-[14px] font-semibold py-3 rounded-full w-full mt-5 transition-all duration-200 hover:bg-[#0a5a49] active:scale-[0.98]">Confirm Submit</button>
+        <button onClick={onReview} className="w-full mt-2 text-[13px] font-semibold text-gray-600 py-2 rounded-full hover:bg-gray-100">Review Answers</button>
       </div>
     </div>
   )
@@ -97,120 +71,78 @@ function ExamScreen({ type, onBack }) {
   const [answers, setAnswers] = useState(new Array(exam.questions.length).fill(null))
   const [showConfirm, setShowConfirm] = useState(false)
   const [done, setDone] = useState(false)
-
   const total = exam.questions.length
-  const pct = Math.round((current / total) * 100)
-  const letters = ['A', 'B', 'C', 'D', 'E']
-
-  const select = (i) => {
-    const updated = [...answers]
-    updated[current] = i
-    setAnswers(updated)
-  }
-
-  const next = () => {
-    if (current < total - 1) setCurrent(current + 1)
-    else setShowConfirm(true)
-  }
-
-  const prev = () => { if (current > 0) setCurrent(current - 1) }
-
-  const confirmSubmit = () => {
-    setShowConfirm(false)
-    setDone(true)
-  }
+  const select = (i) => { const u = [...answers]; u[current] = i; setAnswers(u) }
 
   if (done) {
     const res = exam.score(answers)
-    const score = answers.reduce((a, b) => a + (4 - (b ?? 0)), 0)
-    const maxScore = total * 4
-    const scorePct = Math.round((score / maxScore) * 100)
-
+    const score = answers.reduce((a, b) => a + (4 - (b?? 0)), 0)
+    const pct = Math.round((score / (total * 4)) * 100)
     return (
-      <div>
-        <div className="bg-[#E1F5EE] border-b border-[#9FE1CB] px-4 py-5">
-          <h2 className="text-[20px] font-bold text-[#085041]">Your Results</h2>
-          <p className="text-[13px] text-[#0F6E56] mt-1">{exam.title}</p>
+      <div className="bg-[#f6f8f7] min-h-[calc(100vh-64px)]">
+        <div className="bg-[#085041] px-6 md:px-10 py-6 text-white">
+          <p className="text-[11px] text-white/50 tracking-widest font-bold">RESULTS</p>
+          <h2 className="text-[20px] font-bold mt-1">{exam.title}</h2>
         </div>
-        <div className="px-4 py-6 max-w-xl mx-auto text-center">
-          <div className="w-[88px] h-[88px] rounded-full bg-[#E1F5EE] border-[3px] border-[#9FE1CB] flex flex-col items-center justify-center mx-auto mb-4">
-            <p className="text-[22px] font-bold text-[#085041]">{scorePct}%</p>
-            <p className="text-[10px] text-[#0F6E56]">Score</p>
+        <div className="px-4 md:px-10 py-6 max-w-[720px] mx-auto">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-[64px] h-[64px] rounded-full bg-[#E8F5F1] flex items-center justify-center text-[#085041] font-bold text-[18px]">{pct}%</div>
+              <div>
+                <span className="text-[12px] font-bold px-3 py-1 rounded-full" style={{ background: res.bg, color: res.color }}>{res.label}</span>
+                <p className="text-[13px] text-gray-600 mt-2">{res.desc}</p>
+              </div>
+            </div>
+            <button onClick={onBack} className="bg-[#085041] text-white text-[13px] font-semibold py-3 rounded-full w-full mt-5">Back to Assessments</button>
           </div>
-          <span className="inline-block text-[13px] font-bold px-4 py-2 rounded-full mb-4"
-            style={{ background: res.bg, color: res.color }}>{res.label}</span>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left mb-3">
-            <p className="text-[12px] font-bold text-[#085041] uppercase tracking-wider mb-2">What This Means</p>
-            <p className="text-[13px] text-gray-600 leading-relaxed">{res.desc}</p>
-          </div>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left mb-3">
-            <p className="text-[12px] font-bold text-[#085041] uppercase tracking-wider mb-2">Next Steps</p>
-            <p className="text-[13px] text-gray-600 leading-relaxed">Your results have been recorded and will be reviewed by your guidance counselor. You may be invited for a follow-up session based on your responses.</p>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-left">
-            <p className="text-[13px] text-amber-800 leading-relaxed">🔒 <strong>Confidential</strong> — These results are strictly confidential and only visible to your licensed GCO counselor.</p>
-          </div>
-          <button onClick={onBack} className="bg-[#085041] text-white text-[15px] font-semibold py-4 rounded-full w-full">
-            Back to Initial Assessment
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div>
-      {showConfirm && (
-        <ConfirmModal
-          exam={exam}
-          answers={answers}
-          onConfirm={confirmSubmit}
-          onReview={() => setShowConfirm(false)}
-        />
-      )}
-      <div className="bg-[#E1F5EE] border-b border-[#9FE1CB] px-4 py-5">
-        <h2 className="text-[18px] font-bold text-[#085041]">{exam.title}</h2>
-        <p className="text-[13px] text-[#0F6E56] mt-1">Select the answer that best describes you.</p>
-      </div>
-      <div className="px-4 py-5 max-w-xl mx-auto">
-        {/* Progress */}
-        <div className="mb-5">
-          <div className="flex justify-between text-[12px] font-semibold text-gray-500 mb-2">
-            <span>Question {current + 1} of {total}</span>
-            <span>{pct}%</span>
-          </div>
-          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-[#085041] rounded-full transition-all duration-300" style={{ width: `${pct}%` }}/>
-          </div>
+    <div className="bg-[#f6f8f7] min-h-[calc(100vh-64px)]">
+      {showConfirm && <ConfirmModal answered={answers.filter(a=>a!==null).length} total={total} onConfirm={() => { setShowConfirm(false); setDone(true)}} onReview={() => setShowConfirm(false)} />}
+      <div className="bg-white border-b border-gray-200 px-6 md:px-10 py-4 flex justify-between items-center sticky top-0 z-10">
+        <div>
+          <h2 className="text-[15px] font-bold text-gray-900">{exam.title}</h2>
+          <p className="text-[12px] text-gray-500">Question {current + 1} of {total}</p>
         </div>
-
-        {/* Question */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-4">
-          <p className="text-[11px] font-bold text-[#1D9E75] mb-2">Question {current + 1}</p>
-          <p className="text-[15px] font-semibold text-gray-900 leading-relaxed mb-4">{exam.questions[current].q}</p>
-          <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <p className="text-[11px] font-bold text-gray-400 hidden md:block">{Math.round(((current+1)/total)*100)}%</p>
+          <div className="w-[100px] md:w-[140px] h-2 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-[#085041] transition-all duration-300" style={{ width: `${((current+1)/total)*100}%` }}/></div>
+        </div>
+      </div>
+      <div className="px-4 md:px-10 py-6 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 max-w-[1280px] mx-auto">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 h-fit">
+          <p className="text-[18px] md:text-[20px] font-semibold text-gray-900 leading-snug">{exam.questions[current].q}</p>
+          <div className="flex flex-col gap-2.5 mt-6">
             {exam.questions[current].opts.map((o, i) => (
-              <button key={i} onClick={() => select(i)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-[1.5px] text-left transition-all ${answers[current] === i ? 'border-[#085041] bg-[#E1F5EE]' : 'border-[#d1e5de] bg-white'}`}>
-                <div className={`w-7 h-7 rounded-full border-[1.5px] flex items-center justify-center text-[12px] font-bold flex-shrink-0 transition-all ${answers[current] === i ? 'bg-[#085041] border-[#085041] text-white' : 'border-[#d1e5de] text-gray-400'}`}>
-                  {letters[i]}
-                </div>
-                <span className="text-[14px] text-gray-800">{o}</span>
+              <button key={i} onClick={() => select(i)} className={`px-4 py-3.5 rounded-xl border text-left text-[14px] flex items-center gap-3 transition-all duration-200 ${answers[current]===i? 'border-[#085041] bg-[#E8F5F1] text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-[#085041]/30'}`}>
+                <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[11px] font-bold ${answers[current]===i? 'bg-[#085041] border-[#085041] text-white' : 'border-gray-300 text-gray-500 bg-gray-50'}`}>{String.fromCharCode(65+i)}</div>
+                {o}
               </button>
             ))}
           </div>
+          <div className="flex gap-3 mt-8">
+            <button onClick={() => setCurrent(c => Math.max(0, c-1))} disabled={current===0} className="px-6 py-3 rounded-full border border-gray-200 text-[13px] font-semibold disabled:opacity-40">Back</button>
+            <button onClick={() => current===total-1? setShowConfirm(true) : setCurrent(c=>c+1)} disabled={answers[current]===null} className={`flex-1 py-3 rounded-full text-[13px] font-bold ${answers[current]===null? 'bg-gray-200 text-gray-400' : 'bg-[#085041] text-white hover:bg-[#0a5a49]'}`}>{current===total-1? 'Submit' : 'Next'}</button>
+          </div>
         </div>
-
-        {/* Nav */}
-        <div className="flex gap-3">
-          <button onClick={prev} style={{ visibility: current === 0 ? 'hidden' : 'visible' }}
-            className="flex-1 border-[1.5px] border-[#9FE1CB] text-[#085041] text-[14px] font-semibold py-3.5 rounded-full">
-            ← Back
-          </button>
-          <button onClick={next} disabled={answers[current] === null}
-            className={`flex-[2] text-[14px] font-semibold py-3.5 rounded-full transition-all ${answers[current] === null ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#085041] text-white'}`}>
-            {current === total - 1 ? 'Submit ✓' : 'Next →'}
-          </button>
+        <div className="space-y-4 h-fit lg:sticky lg:top-[88px]">
+          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+            <p className="text-[10px] font-bold tracking-widest text-gray-400">YOUR PROGRESS</p>
+            <div className="flex gap-1.5 mt-3">
+              {Array.from({length: total}).map((_, idx) => (
+                <div key={idx} className={`h-2 flex-1 rounded-full ${idx < current? 'bg-[#085041]' : idx === current? 'bg-[#085041]' : answers[idx]!==null? 'bg-[#085041]/50' : 'bg-gray-200'}`}/>
+              ))}
+            </div>
+            <p className="text-[12px] text-gray-500 mt-3">{answers.filter(a=>a!==null).length} of {total} answered</p>
+          </div>
+          <div className="bg-[#085041] rounded-2xl p-5 text-white">
+            <p className="text-[10px] font-bold tracking-widest text-white/50">CONFIDENTIAL</p>
+            <p className="text-[12px] text-white/80 mt-2">Only your GCO counselor can view this. RA 10173 protected.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -219,55 +151,50 @@ function ExamScreen({ type, onBack }) {
 
 export default function Assessment() {
   const [view, setView] = useState('list')
-
-  if (view === 'personality') return <ExamScreen type="personality" onBack={() => setView('list')}/>
-  if (view === 'wellbeing') return <ExamScreen type="wellbeing" onBack={() => setView('list')}/>
-
-  const examCards = [
-    {
-      type: 'personality',
-      title: 'Profiling Exam for Personality',
-      desc: 'Understand your personality traits and behavioral tendencies through a structured self-assessment.',
-      meta: '⏱ 15–20 mins · 10 items',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="#085041" strokeWidth={1.8} className="w-[28px] h-[28px]"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-    },
-    {
-      type: 'wellbeing',
-      title: 'Profiling Exam for Well-Being',
-      desc: 'Assess your overall mental, emotional, and physical well-being to guide your counseling support.',
-      meta: '⏱ 10–15 mins · 10 items',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="#085041" strokeWidth={1.8} className="w-[28px] h-[28px]"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" strokeLinecap="round" strokeLinejoin="round"/></svg>
-    }
-  ]
+  if (view!== 'list') return <ExamScreen type={view} onBack={() => setView('list')} />
 
   return (
-    <div>
-      <div className="bg-[#E1F5EE] border-b border-[#9FE1CB] px-4 py-5">
-        <h2 className="text-[20px] font-bold text-[#085041]">Initial Assessment</h2>
-        <p className="text-[13px] text-[#0F6E56] mt-1">Complete all required profiling exams.</p>
-      </div>
-      <div className="px-4 py-5 flex flex-col gap-4 max-w-2xl mx-auto md:grid md:grid-cols-2">
-        {examCards.map(card => (
-          <div key={card.type} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-center">
-            <div className="w-[60px] h-[60px] rounded-full bg-[#E1F5EE] flex items-center justify-center mx-auto mb-3">
-              {card.icon}
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-full bg-[#E1F5EE] text-[#085041] mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#085041] inline-block"/>
-              Required
-            </span>
-            <h3 className="text-[16px] font-bold text-gray-900 mb-2">{card.title}</h3>
-            <p className="text-[13px] text-gray-500 leading-relaxed mb-2">{card.desc}</p>
-            <p className="text-[12px] font-semibold text-[#0F6E56] mb-4">{card.meta}</p>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-left">
-              <p className="text-[12px] text-amber-800 leading-relaxed">🔒 <strong>Confidential</strong> — Results are only accessed by your licensed guidance counselor.</p>
-            </div>
-            <button onClick={() => setView(card.type)}
-              className="bg-[#085041] text-white text-[14px] font-semibold py-3.5 rounded-full w-full">
-              Start Exam
-            </button>
+    <div className="bg-[#f6f8f7] h-[calc(100vh-64px)] flex flex-col overflow-hidden">
+      {/* HEADER - GITNA NA */}
+      <div className="bg-[#085041] px-6 md:px-10 py-8 md:py-10 flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between shrink-0">
+        <div className="flex-1 flex flex-col justify-center">
+          <h2 className="text-[32px] md:text-[40px] font-bold text-white leading-[0.95] tracking-tight">Initial Assessment</h2>
+          <p className="text-[13px] md:text-[14px] text-white/70 mt-3 max-w-[440px] leading-relaxed">Complete both profiles. Required before booking counseling. Helps your counselor understand your current state.</p>
+        </div>
+        <div className="w-full lg:w-[360px] bg-[#0a5a49] border border-white/10 rounded-2xl p-5 shrink-0">
+          <p className="text-[10px] font-bold tracking-widest text-white/40 mb-3">YOUR PROGRESS</p>
+          <div className="flex gap-3">
+            <div className="flex-1 bg-white/10 rounded-xl p-3 text-center"><p className="text-[20px] font-bold text-white">0/2</p><p className="text-[10px] text-white/50 mt-1">Completed</p></div>
+            <div className="flex-1 bg-white/10 rounded-xl p-3 text-center"><p className="text-[20px] font-bold text-white">20</p><p className="text-[10px] text-white/50 mt-1">Total items</p></div>
           </div>
-        ))}
+          <p className="text-[10px] text-white/50 mt-3">Confidential. Only your GCO counselor sees this. RA 10173.</p>
+        </div>
+      </div>
+
+      {/* CONTENT - DI NA SCROLLABLE SA PC */}
+      <div className="flex-1 px-4 md:px-10 py-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 max-w-[1280px] mx-auto w-full overflow-y-auto lg:overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 h-fit">
+          {Object.keys(exams).map((key) => {
+            const ex = exams[key]
+            return (
+              <div key={key} className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col group hover:shadow-[0_12px_32px_rgba(8,80,65,0.14)] hover:-translate-y-[1px] transition-all">
+                <div className="w-10 h-10 rounded-xl bg-[#E8F5F1] flex items-center justify-center text-[#085041] font-bold text-[14px] group-hover:bg-[#085041] group-hover:text-white transition-colors">{key==='personality'? 'P' : 'W'}</div>
+                <p className="text-[15px] font-bold text-gray-900 mt-4">{ex.title}</p>
+                <p className="text-[12px] text-gray-500 mt-1.5 leading-relaxed flex-1">{ex.desc}</p>
+                <p className="text-[10px] text-gray-400 mt-3">10 items • 5-10 mins</p>
+                <button onClick={() => setView(key)} className="bg-[#085041] text-white text-[12px] font-bold py-2.5 rounded-full w-full mt-4 hover:bg-[#0a5a49] active:scale-[0.98] transition-all">Start Exam →</button>
+              </div>
+            )
+          })}
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 h-fit">
+          <p className="text-[12px] font-bold text-gray-900">Why is this required?</p>
+          <div className="mt-4 space-y-3">
+            <div className="flex gap-2.5"><span className="w-6 h-6 rounded-full bg-[#E8F5F1] flex items-center justify-center text-[10px] font-bold text-[#085041]">1</span><p className="text-[11px] text-gray-600 flex-1 leading-relaxed">Helps your counselor understand your state</p></div>
+            <div className="flex gap-2.5"><span className="w-6 h-6 rounded-full bg-[#E8F5F1] flex items-center justify-center text-[10px] font-bold text-[#085041]">2</span><p className="text-[11px] text-gray-600 flex-1 leading-relaxed">Only 10 minutes total for both exams</p></div>
+            <div className="flex gap-2.5"><span className="w-6 h-6 rounded-full bg-[#E8F5F1] flex items-center justify-center text-[10px] font-bold text-[#085041]">3</span><p className="text-[11px] text-gray-600 flex-1 leading-relaxed">Then you can book counseling instantly</p></div>
+          </div>
+        </div>
       </div>
     </div>
   )

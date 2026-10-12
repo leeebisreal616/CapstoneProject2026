@@ -15,66 +15,38 @@ const STATUS_STYLES = {
 
 export default function AppointmentHistory({ showToast }) {
   const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showNotice, setShowNotice] = useState(false)
+  const [noticeMsg, setNoticeMsg] = useState('')
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('gco_appointments') || '[]')
-    if (saved.length === 0) {
-      const seed = [
-        {
-          id: 'GCO-2026-001',
-          date: '2026-05-10',
-          day: 'Monday',
-          time: '10:00 AM',
-          duration: '1 Hour',
-          counselor: 'Ms. Santos - Guidance Counselor',
-          type: 'New Appointment',
-          reason: 'Academic Concerns',
-          status: 'Completed',
-          followUpNeeded: 'No',
-          followUpNotes: '',
-          createdAt: '2026-05-08 09:12 AM',
-        },
-        {
-          id: 'GCO-2026-002',
-          date: '2026-05-19',
-          day: 'Tuesday',
-          time: '2:00 PM',
-          duration: '1 Hour',
-          counselor: 'Mr. Dela Cruz - Guidance Counselor',
-          type: 'Follow-up',
-          reason: 'Career Guidance',
-          status: 'Approved',
-          followUpNeeded: 'Yes - Requesting follow-up next week',
-          followUpNotes: 'Discussed internship options, need follow-up for OJT requirements',
-          createdAt: '2026-05-18 02:30 PM',
-        },
-        {
-          id: 'GCO-2026-003',
-          date: '2026-05-26',
-          day: 'Monday',
-          time: '9:00 AM',
-          duration: '1 Hour',
-          counselor: 'Ms. Santos - Guidance Counselor',
-          type: 'New Appointment',
-          reason: 'Personal Concerns',
-          status: 'Pending',
-          followUpNeeded: 'No',
-          followUpNotes: '',
-          createdAt: '2026-05-24 11:05 AM',
-        },
-      ]
-      localStorage.setItem('gco_appointments', JSON.stringify(seed))
-      setHistory(seed)
-    } else {
-      setHistory(saved.reverse())
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/appointments')
+        const data = await res.json()
+        // yung data mo is array mismo
+        setHistory(data.reverse())
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
     }
+    fetchHistory()
   }, [])
 
-  const cancelBooking = (id) => {
-    const updated = history.map((h) => (h.id === id? {...h, status: 'Cancelled' } : h))
-    setHistory(updated)
-    localStorage.setItem('gco_appointments', JSON.stringify([...updated].reverse()))
-    if (showToast) showToast('Appointment cancelled')
+  const cancelBooking = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:3001/api/appointments/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to cancel')
+      setHistory(prev => prev.map(h => h.id === id? {...h, status: 'Cancelled'} : h))
+      setNoticeMsg("Your appointment has been successfully cancelled.")
+      setShowNotice(true)
+      if (showToast) showToast('Appointment cancelled')
+    } catch (err) {
+      setNoticeMsg(err.message)
+      setShowNotice(true)
+    }
   }
 
   return (
@@ -92,10 +64,10 @@ export default function AppointmentHistory({ showToast }) {
 
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-[22px] font-bold text-gray-900">Appointment History</h1>
-        <span className="text-[12px] text-gray-500">{history.length} record{history.length!== 1 && 's'}</span>
+        <span className="text-[12px] text-gray-500">{history.length} record{history.length!==1 && 's'}</span>
       </div>
 
-      {history.length === 0? (
+      {loading? <p className="text-[14px] text-gray-500 text-center">Loading...</p> : history.length === 0? (
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-10 text-center">
           <p className="text-[14px] text-gray-500">No appointments yet.</p>
         </div>
@@ -105,38 +77,32 @@ export default function AppointmentHistory({ showToast }) {
             <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-5">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="text-[13px] font-bold text-gray-900">{item.id} • {item.type}</p>
-                  <p className="text-[12px] text-gray-500 mt-0.5">{item.createdAt} • Booked</p>
+                  <p className="text-[13px] font-bold text-gray-900">GCO-{item.id} • New Appointment</p>
+                  <p className="text-[12px] text-gray-500 mt-0.5">{new Date(item.created_at).toLocaleString()} • Booked</p>
                 </div>
                 <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${STATUS_STYLES[item.status]}`}>{item.status}</span>
               </div>
-
               <div className="grid grid-cols-2 gap-3 text-[12px] mb-3">
-                <div><p className="text-gray-400 text-[11px]">Date & Day</p><p className="font-semibold text-gray-800">{item.day}, {item.date}</p></div>
-                <div><p className="text-gray-400 text-[11px]">Time</p><p className="font-semibold text-gray-800">{item.time} <span className="font-normal text-gray-500">({item.duration})</span></p></div>
-                <div className="col-span-2"><p className="text-gray-400 text-[11px]">Counselor</p><p className="font-semibold text-gray-800">{item.counselor}</p></div>
+                <div><p className="text-gray-400 text-[11px]">Date & Day</p><p className="font-semibold text-gray-800">{new Date(item.appointment_date).toLocaleDateString()}</p></div>
+                <div><p className="text-gray-400 text-[11px]">Time</p><p className="font-semibold text-gray-800">{item.consultation_hour}</p></div>
+                <div className="col-span-2"><p className="text-gray-400 text-[11px]">Counselor</p><p className="font-semibold text-gray-800">{item.counselor_name}</p></div>
                 <div className="col-span-2"><p className="text-gray-400 text-[11px]">Reason</p><p className="font-semibold text-gray-800">{item.reason}</p></div>
-                {item.followUpNeeded!== 'No' && (
-                  <div className="col-span-2 bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-3 mt-1">
-                    <p className="text-[11px] font-bold text-[#92400E]">Follow-up Request</p>
-                    <p className="text-[12px] text-[#78350F] mt-1">{item.followUpNeeded}</p>
-                    {item.followUpNotes && <p className="text-[11px] text-gray-600 mt-1 italic">Notes: {item.followUpNotes}</p>}
-                  </div>
-                )}
               </div>
-
               {item.status === 'Pending' && (
-                <button onClick={() => cancelBooking(item.id)} className="w-full mt-2 bg-white border border-red-200 text-red-600 text-[13px] font-semibold py-2.5 rounded-full hover:bg-red-50 transition">
-                  Cancel Appointment
-                </button>
-              )}
-              {item.status === 'Approved' && (
-                <div className="mt-2 bg-[#EFF6FF] text-[#1E40AF] text-[11px] px-3 py-2 rounded-full text-center font-medium">
-                  Please proceed to GCO Office on {item.date} at {item.time}
-                </div>
+                <button onClick={() => cancelBooking(item.id)} className="w-full mt-2 bg-white border border-red-200 text-red-600 text-[13px] font-semibold py-2.5 rounded-full hover:bg-red-50">Cancel Appointment</button>
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {showNotice && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-[340px] w-full border-t-4 border-green-600">
+            <h3 className="font-bold text-[15px] text-green-700">Notice</h3>
+            <p className="text-[13px] text-gray-700 mt-2">{noticeMsg}</p>
+            <button onClick={() => setShowNotice(false)} className="w-full mt-4 py-2.5 rounded-full bg-green-600 text-white font-bold text-[13px]">OK</button>
+          </div>
         </div>
       )}
     </div>
