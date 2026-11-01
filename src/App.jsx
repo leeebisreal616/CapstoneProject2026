@@ -9,8 +9,8 @@ import AppointmentHistory from './pages/AppointmentHistory'
 import BookAppointment from './pages/BookAppointment'
 import Modules from './pages/Modules'
 import Assessment from './pages/Assessment'
-import AdminDashboard from './pages/AdminDashboard'
-import AdminLogin from './pages/AdminLogin'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminLogin from './pages/admin/AdminLogin'
 import { isLoggedIn } from './utils/adminAuth'
 
 // Toast Context
@@ -48,20 +48,16 @@ function StudentLayout() {
   const location = useLocation()
   const [toast, setToast] = useState({ message: '', visible: false })
   let toastTimer = null
-
   const showToast = useCallback((msg) => {
     clearTimeout(toastTimer)
     setToast({ message: msg, visible: true })
     toastTimer = setTimeout(() => setToast(t => ({...t, visible: false })), 2500)
   }, [])
-
   const goTo = useCallback((path) => {
     navigate(path)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [navigate])
-
   const pageId = location.pathname === '/'? 'home' : location.pathname.replace('/', '')
-
   return (
     <ToastContext.Provider value={showToast}>
       <div className="bg-[#f4f9f7] min-h-screen">
@@ -87,16 +83,31 @@ function StudentLayout() {
   )
 }
 
-// Gated admin area
+// Gated admin area - SECURE VERSION
 function AdminArea() {
   const [authed, setAuthed] = useState(isLoggedIn())
+
   useEffect(() => {
-    setAuthed(isLoggedIn())
+    const check = () => {
+      if (!isLoggedIn()) setAuthed(false)
+    }
+    // Check if page was restored from bfcache (back button)
+    window.addEventListener('pageshow', check)
+    // Also check on popstate (back/forward)
+    window.addEventListener('popstate', check)
+    return () => {
+      window.removeEventListener('pageshow', check)
+      window.removeEventListener('popstate', check)
+    }
   }, [])
+
   if (!authed) {
     return <AdminLogin onSuccess={() => setAuthed(true)} />
   }
-  return <AdminDashboard onLogout={() => setAuthed(false)} />
+  return <AdminDashboard onLogout={() => {
+    setAuthed(false)
+    window.location.replace('/admin')
+  }} />
 }
 
 export default function App() {

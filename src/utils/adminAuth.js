@@ -1,13 +1,10 @@
 // ============================================================
 // TEMPORARY frontend-only auth for demo/prototype purposes.
 // This must be replaced by the IT team's real backend authentication
-// (e.g. verified against the university's staff account database)
 // before this system goes into production.
 // ============================================================
-
 const SESSION_KEY = 'gco_admin_session'
 
-// Demo credentials — change here only, nowhere else in the codebase
 const DEMO_CREDENTIALS = {
   username: 'admin',
   password: 'gco2026',
@@ -19,6 +16,7 @@ export function login(username, password) {
       username,
       loggedInAt: new Date().toISOString(),
     }))
+    window.history.pushState(null, '', window.location.href)
     return { success: true }
   }
   return { success: false, message: 'Incorrect username or password.' }
@@ -26,12 +24,13 @@ export function login(username, password) {
 
 export function logout() {
   sessionStorage.removeItem(SESSION_KEY)
+  localStorage.removeItem(SESSION_KEY)
+  window.history.replaceState(null, '', '/admin')
 }
 
 export function isLoggedIn() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    return raw !== null
+    return sessionStorage.getItem(SESSION_KEY) !== null
   } catch {
     return false
   }

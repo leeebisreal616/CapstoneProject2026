@@ -9,6 +9,9 @@ export default {
         'g-light': '#1D9E75',
         'g-pale': '#E1F5EE',
         'g-border': '#9FE1CB',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     },
   },
