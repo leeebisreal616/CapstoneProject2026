@@ -85,7 +85,7 @@ export default function BookAppointment() {
         student_info: "Aaron Valencia - 202311325 - BSIT 4th Year",
         status: "Pending"
       }
-      const res = await fetch('http://localhost:3001/api/appointments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await fetch('https://gco-portal-backend.onrender.com/api/appointments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Booking failed')
       showNoticeModal("Your counseling request has been successfully booked and saved to GCO databank.", "success")
