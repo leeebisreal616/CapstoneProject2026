@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { login } from '../utils/adminAuth'
+import { login } from '../../utils/adminAuth'
 
 export default function AdminLogin({ onSuccess }) {
   const [username, setUsername] = useState('')

@@ -21,25 +21,64 @@ db.connect(err => {
   }
 })
 
-// GET all appointments - for history
+// ========== STUDENT & ADMIN - SAME TABLE ==========
+// GET all appointments - for student history AND admin dashboard
 app.get('/api/appointments', (req, res) => {
-  db.query('SELECT * FROM appointments ORDER BY appointment_date DESC, id DESC', (err, rows) => {
+  // Admin can filter ?status=Pending
+  const { status } = req.query
+  let sql = 'SELECT * FROM appointments ORDER BY appointment_date DESC, id DESC'
+  let params = []
+  
+  if (status) {
+    sql = 'SELECT * FROM appointments WHERE status=? ORDER BY appointment_date DESC, id DESC'
+    params = [status]
+  }
+
+  db.query(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ message: err.message })
     res.json(rows)
   })
 })
 
-// DELETE appointment
+// GET single appointment
+app.get('/api/appointments/:id', (req, res) => {
+  db.query('SELECT * FROM appointments WHERE id=?', [req.params.id], (err, rows) => {
+    if (err) return res.status(500).json({ message: err.message })
+    res.json(rows[0])
+  })
+})
+
+// DELETE / CANCEL - Student cancel
 app.delete('/api/appointments/:id', (req, res) => {
-  db.query('UPDATE appointments SET status="Cancelled" WHERE id=?', [req.params.id], (err, result) => {
+  db.query('UPDATE appointments SET status="Cancelled" WHERE id=?', [req.params.id], (err) => {
     if (err) return res.status(500).json({ message: err.message })
     res.json({ message: 'Cancelled' })
   })
 })
 
-// POST new appointment - UPDATED FOR MON-FRI ONLY
+// === NEW FOR ADMIN === - APPROVE / DECLINE / COMPLETE
+app.put('/api/appointments/:id', (req, res) => {
+  const { status, remarks, counselor_name } = req.body // status: Approved, Declined, Completed
+  console.log(`🔄 ADMIN UPDATE ID ${req.params.id} -> ${status}`)
+
+  let sql = 'UPDATE appointments SET status=? WHERE id=?'
+  let params = [status, req.params.id]
+
+  // If admin adds remarks or re-assign counselor
+  if (remarks !== undefined) {
+    sql = 'UPDATE appointments SET status=?, remarks=? WHERE id=?'
+    params = [status, remarks, req.params.id]
+  }
+
+  db.query(sql, params, (err, result) => {
+    if (err) return res.status(500).json({ message: err.message })
+    console.log('✅ ADMIN UPDATED:', req.params.id)
+    res.json({ message: `Status updated to ${status}` })
+  })
+})
+
+// POST new appointment - Student Booking
 app.post('/api/appointments', (req, res) => {
-  // Accept BOTH old and new payload para di malito
   const appointment_date = req.body.appointment_date || req.body.date
   const consultation_hour = req.body.consultation_hour || req.body.time
   const counselor_name = req.body.counselor_name || req.body.counselor
@@ -48,67 +87,55 @@ app.post('/api/appointments', (req, res) => {
 
   console.log('📩 BOOKING:', { appointment_date, consultation_hour, counselor_name, student_info })
 
-  if (!appointment_date ||!consultation_hour ||!counselor_name ||!student_info) {
+  if (!appointment_date || !consultation_hour || !counselor_name || !student_info) {
     return res.status(400).json({ message: 'Missing fields - appointment_date cannot be null' })
   }
 
-  // Rule 1: MON-FRI ONLY - Block Saturday (6) and Sunday (0)
+  // Rule 1: MON-FRI ONLY
   const day = new Date(appointment_date).getDay()
   if (day === 0 || day === 6) {
-    return res.status(400).json({ message: 'No booking on weekends - Mon to Fri only. School is closed on Sat & Sun.' })
+    return res.status(400).json({ message: 'No booking on weekends - Mon to Fri only.' })
   }
 
-  // Rule 2: 1 appointment per student only (pending)
-  db.query(
-    `SELECT COUNT(*) as cnt FROM appointments WHERE student_info=? AND status='Pending'`,
-    [student_info],
-    (err, pendingRes) => {
+  // Rule 2: 1 pending per student
+  db.query(`SELECT COUNT(*) as cnt FROM appointments WHERE student_info=? AND status='Pending'`, [student_info], (err, pendingRes) => {
+    if (err) return res.status(500).json({ message: err.message })
+    if (pendingRes[0].cnt >= 1) {
+      return res.status(400).json({ message: 'May pending appointment ka pa. 1 appointment per student lang.' })
+    }
+
+    // Rule 3: 1 per day per student
+    db.query(`SELECT COUNT(*) as cnt FROM appointments WHERE appointment_date=? AND student_info=? AND status!='Cancelled'`, [appointment_date, student_info], (err, dayRes) => {
       if (err) return res.status(500).json({ message: err.message })
-      if (pendingRes[0].cnt >= 1) {
-        return res.status(400).json({ message: 'May pending appointment ka pa. 1 appointment per student lang.' })
+      if (dayRes[0].cnt >= 1) {
+        return res.status(400).json({ message: `Naka-book ka na for ${appointment_date}.` })
       }
 
-      // Rule 3: 1 per day per student
-      db.query(
-        `SELECT COUNT(*) as cnt FROM appointments WHERE appointment_date=? AND student_info=? AND status!= 'Cancelled'`,
-        [appointment_date, student_info],
-        (err, dayRes) => {
-          if (err) return res.status(500).json({ message: err.message })
-          if (dayRes[0].cnt >= 1) {
-            return res.status(400).json({ message: `Naka-book ka na for ${appointment_date}. Next day ka na ulit.` })
-          }
-
-          // Rule 4: 3 per counselor per day
-          db.query(
-            `SELECT COUNT(*) as cnt FROM appointments WHERE appointment_date=? AND counselor_name=? AND status!= 'Cancelled'`,
-            [appointment_date, counselor_name],
-            (err, counRes) => {
-              if (err) return res.status(500).json({ message: err.message })
-              if (counRes[0].cnt >= 3) {
-                return res.status(400).json({ message: `Full na si ${counselor_name} for ${appointment_date} (3 max per day).` })
-              }
-
-              // Save
-              const sql = `INSERT INTO appointments (appointment_date, consultation_hour, counselor_name, reason, student_info, status) VALUES (?,?,?,?,?,'Pending')`
-              db.query(sql, [appointment_date, consultation_hour, counselor_name, reason, student_info], (err, result) => {
-                if (err) {
-                  console.error('❌ INSERT ERROR:', err.message)
-                  return res.status(500).json({ message: err.message })
-                }
-                console.log('✅ SAVED:', result.insertId)
-                res.json({ message: 'Booked!', id: result.insertId })
-              })
-            }
-          )
+      // Rule 4: 3 per counselor per day
+      db.query(`SELECT COUNT(*) as cnt FROM appointments WHERE appointment_date=? AND counselor_name=? AND status!='Cancelled'`, [appointment_date, counselor_name], (err, counRes) => {
+        if (err) return res.status(500).json({ message: err.message })
+        if (counRes[0].cnt >= 3) {
+          return res.status(400).json({ message: `Full na si ${counselor_name} for ${appointment_date} (3 max per day).` })
         }
-      )
-    }
-  )
+
+        const sql = `INSERT INTO appointments (appointment_date, consultation_hour, counselor_name, reason, student_info, status) VALUES (?,?,?,?,?,'Pending')`
+        db.query(sql, [appointment_date, consultation_hour, counselor_name, reason, student_info], (err, result) => {
+          if (err) {
+            console.error('❌ INSERT ERROR:', err.message)
+            return res.status(500).json({ message: err.message })
+          }
+          console.log('✅ SAVED:', result.insertId)
+          res.json({ message: 'Booked!', id: result.insertId })
+        })
+      })
+    })
+  })
 })
 
-app.get('/', (req, res) => res.send('GCO Server OK - Mon-Fri Only Rule Active'))
+app.get('/', (req, res) => res.send('GCO Server OK - Student + Admin Connected'))
 
 app.listen(3001, () => {
   console.log('Server running on http://localhost:3001')
   console.log('Rules: Mon-Fri Only, 1 per student, 1 per day, 3 per counselor')
+  console.log('ADMIN PUT /api/appointments/:id READY')
 })

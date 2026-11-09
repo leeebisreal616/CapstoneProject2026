@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-
+const BASE = 'http://localhost/gco-api/assessment_results'
 const exams = {
   personality: {
     title: 'Personality Profile',
@@ -18,9 +18,9 @@ const exams = {
     ],
     score(ans) {
       const s = ans.reduce((a, b) => a + (4 - b), 0)
-      if (s >= 30) return { label: 'Leadership Oriented', color: '#085041', bg: '#E8F5F1', desc: 'You tend to be outgoing, proactive, and enjoy social interaction.' }
-      if (s >= 20) return { label: 'Balanced', color: '#185FA5', bg: '#e6f1fb', desc: 'Healthy mix of introversion and extraversion. You adapt well.' }
-      return { label: 'Reflective', color: '#3C3489', bg: '#ede9fe', desc: 'Thoughtful and introspective. You thrive in roles that require careful analysis.' }
+      if (s >= 30) return { label: 'Leadership Oriented', color: '#085041', bg: '#E8F5F1', desc: 'You tend to be outgoing, proactive, and enjoy social interaction.', flag: 'Normal' }
+      if (s >= 20) return { label: 'Balanced', color: '#185FA5', bg: '#e6f1fb', desc: 'Healthy mix of introversion and extraversion. You adapt well.', flag: 'Normal' }
+      return { label: 'Reflective', color: '#3C3489', bg: '#ede9fe', desc: 'Thoughtful and introspective. You thrive in roles that require careful analysis.', flag: 'Monitor' }
     }
   },
   wellbeing: {
@@ -40,13 +40,12 @@ const exams = {
     ],
     score(ans) {
       const s = ans.reduce((a, b) => a + (4 - b), 0)
-      if (s >= 30) return { label: 'Good Well-Being', color: '#085041', bg: '#E8F5F1', desc: 'Managing well across physical, emotional, and social dimensions.' }
-      if (s >= 18) return { label: 'Moderate', color: '#B45309', bg: '#FEF3C7', desc: 'Some areas of strength but may benefit from additional support.' }
-      return { label: 'Needs Attention', color: '#9B1C1C', bg: '#FEE2E2', desc: 'You may be experiencing challenges. Please reach out to GCO.' }
+      if (s >= 30) return { label: 'Good Well-Being', color: '#085041', bg: '#E8F5F1', desc: 'Managing well across physical, emotional, and social dimensions.', flag: 'Normal' }
+      if (s >= 18) return { label: 'Moderate Well-Being', color: '#B45309', bg: '#FEF3C7', desc: 'Some areas of strength but may benefit from additional support.', flag: 'Monitor' }
+      return { label: 'Needs Attention', color: '#9B1C1C', bg: '#FEE2E2', desc: 'You may be experiencing challenges. Please reach out to GCO.', flag: 'High' }
     }
   }
 }
-
 function ConfirmModal({ answered, total, onConfirm, onReview }) {
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape') onReview() }
@@ -64,24 +63,36 @@ function ConfirmModal({ answered, total, onConfirm, onReview }) {
     </div>
   )
 }
-
 function ExamScreen({ type, onBack }) {
   const exam = exams[type]
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState(new Array(exam.questions.length).fill(null))
   const [showConfirm, setShowConfirm] = useState(false)
   const [done, setDone] = useState(false)
+  const [saving, setSaving] = useState(false)
   const total = exam.questions.length
   const select = (i) => { const u = [...answers]; u[current] = i; setAnswers(u) }
-
+  const handleSubmitToDB = async () => {
+    setSaving(true)
+    const resScore = exam.score(answers)
+    const score = answers.reduce((a, b) => a + (4 - (b ?? 0)), 0)
+    const storedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('student') || localStorage.getItem('gco_user') || '{}')
+    const sid = storedUser.student_id || storedUser.student_number || '202311325'
+    try {
+      await fetch(BASE + '/create_result.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ student_id: sid, exam_type: type, score: score, result_label: resScore.label, flag_level: resScore.flag }) })
+    } catch(e){ console.error(e) }
+    setSaving(false)
+    setShowConfirm(false)
+    setDone(true)
+  }
   if (done) {
     const res = exam.score(answers)
-    const score = answers.reduce((a, b) => a + (4 - (b?? 0)), 0)
+    const score = answers.reduce((a, b) => a + (4 - (b ?? 0)), 0)
     const pct = Math.round((score / (total * 4)) * 100)
     return (
-      <div className="bg-[#f6f8f7] min-h-[calc(100vh-64px)]">
+      <div className="bg-[#f6f8f7] w-full">
         <div className="bg-[#085041] px-6 md:px-10 py-6 text-white">
-          <p className="text-[11px] text-white/50 tracking-widest font-bold">RESULTS</p>
+          <p className="text-[11px] text-white/50 tracking-widest font-bold">RESULTS SAVED</p>
           <h2 className="text-[20px] font-bold mt-1">{exam.title}</h2>
         </div>
         <div className="px-4 md:px-10 py-6 max-w-[720px] mx-auto">
@@ -90,7 +101,7 @@ function ExamScreen({ type, onBack }) {
               <div className="w-[64px] h-[64px] rounded-full bg-[#E8F5F1] flex items-center justify-center text-[#085041] font-bold text-[18px]">{pct}%</div>
               <div>
                 <span className="text-[12px] font-bold px-3 py-1 rounded-full" style={{ background: res.bg, color: res.color }}>{res.label}</span>
-                <p className="text-[13px] text-gray-600 mt-2">{res.desc}</p>
+                <p className="text-[13px] text-gray-600 mt-2">{res.desc} Saved to GCO.</p>
               </div>
             </div>
             <button onClick={onBack} className="bg-[#085041] text-white text-[13px] font-semibold py-3 rounded-full w-full mt-5">Back to Assessments</button>
@@ -99,18 +110,17 @@ function ExamScreen({ type, onBack }) {
       </div>
     )
   }
-
   return (
-    <div className="bg-[#f6f8f7] min-h-[calc(100vh-64px)]">
-      {showConfirm && <ConfirmModal answered={answers.filter(a=>a!==null).length} total={total} onConfirm={() => { setShowConfirm(false); setDone(true)}} onReview={() => setShowConfirm(false)} />}
-      <div className="bg-white border-b border-gray-200 px-6 md:px-10 py-4 flex justify-between items-center sticky top-0 z-10">
+    <div className="bg-[#f6f8f7] w-full">
+      {showConfirm && <ConfirmModal answered={answers.filter(a=>a!==null).length} total={total} onConfirm={handleSubmitToDB} onReview={() => setShowConfirm(false)} />}
+      <div className="bg-white border-b border-gray-200 px-6 md:px-10 py-4 flex justify-between items-center sticky top-[60px] z-10">
         <div>
           <h2 className="text-[15px] font-bold text-gray-900">{exam.title}</h2>
           <p className="text-[12px] text-gray-500">Question {current + 1} of {total}</p>
         </div>
         <div className="flex items-center gap-3">
           <p className="text-[11px] font-bold text-gray-400 hidden md:block">{Math.round(((current+1)/total)*100)}%</p>
-          <div className="w-[100px] md:w-[140px] h-2 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-[#085041] transition-all duration-300" style={{ width: `${((current+1)/total)*100}%` }}/></div>
+          <div className="w-[100px] md:w-[140px] h-2 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-[#085041] transition-all duration-300" style={{ width: ((current + 1) / total) * 100 + '%' }} /></div>
         </div>
       </div>
       <div className="px-4 md:px-10 py-6 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 max-w-[1280px] mx-auto">
@@ -118,44 +128,47 @@ function ExamScreen({ type, onBack }) {
           <p className="text-[18px] md:text-[20px] font-semibold text-gray-900 leading-snug">{exam.questions[current].q}</p>
           <div className="flex flex-col gap-2.5 mt-6">
             {exam.questions[current].opts.map((o, i) => (
-              <button key={i} onClick={() => select(i)} className={`px-4 py-3.5 rounded-xl border text-left text-[14px] flex items-center gap-3 transition-all duration-200 ${answers[current]===i? 'border-[#085041] bg-[#E8F5F1] text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-[#085041]/30'}`}>
-                <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-[11px] font-bold ${answers[current]===i? 'bg-[#085041] border-[#085041] text-white' : 'border-gray-300 text-gray-500 bg-gray-50'}`}>{String.fromCharCode(65+i)}</div>
+              <button key={i} onClick={() => select(i)} className={'px-4 py-3.5 rounded-xl border text-left text-[14px] flex items-center gap-3 transition-all duration-200 ' + (answers[current]===i ? 'border-[#085041] bg-[#E8F5F1] text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-[#085041]/30')}>
+                <div className={'w-7 h-7 rounded-full border flex items-center justify-center text-[11px] font-bold ' + (answers[current]===i ? 'bg-[#085041] border-[#085041] text-white' : 'border-gray-300 text-gray-500 bg-gray-50')}>{String.fromCharCode(65+i)}</div>
                 {o}
               </button>
             ))}
           </div>
           <div className="flex gap-3 mt-8">
             <button onClick={() => setCurrent(c => Math.max(0, c-1))} disabled={current===0} className="px-6 py-3 rounded-full border border-gray-200 text-[13px] font-semibold disabled:opacity-40">Back</button>
-            <button onClick={() => current===total-1? setShowConfirm(true) : setCurrent(c=>c+1)} disabled={answers[current]===null} className={`flex-1 py-3 rounded-full text-[13px] font-bold ${answers[current]===null? 'bg-gray-200 text-gray-400' : 'bg-[#085041] text-white hover:bg-[#0a5a49]'}`}>{current===total-1? 'Submit' : 'Next'}</button>
+            <button onClick={() => current===total-1? setShowConfirm(true) : setCurrent(c=>c+1)} disabled={answers[current]===null || saving} className={'flex-1 py-3 rounded-full text-[13px] font-bold ' + (answers[current]===null ? 'bg-gray-200 text-gray-400' : 'bg-[#085041] text-white hover:bg-[#0a5a49]')}>{saving ? 'Saving...' : current===total-1? 'Submit' : 'Next'}</button>
           </div>
         </div>
         <div className="space-y-4 h-fit lg:sticky lg:top-[88px]">
           <div className="bg-white border border-gray-200 rounded-2xl p-5">
             <p className="text-[10px] font-bold tracking-widest text-gray-400">YOUR PROGRESS</p>
-            <div className="flex gap-1.5 mt-3">
-              {Array.from({length: total}).map((_, idx) => (
-                <div key={idx} className={`h-2 flex-1 rounded-full ${idx < current? 'bg-[#085041]' : idx === current? 'bg-[#085041]' : answers[idx]!==null? 'bg-[#085041]/50' : 'bg-gray-200'}`}/>
-              ))}
-            </div>
+            <div className="flex gap-1.5 mt-3">{Array.from({length: total}).map((_, idx) => (<div key={idx} className={'h-2 flex-1 rounded-full ' + (idx < current ? 'bg-[#085041]' : idx === current ? 'bg-[#085041]' : answers[idx]!==null ? 'bg-[#085041]/50' : 'bg-gray-200')} />))}</div>
             <p className="text-[12px] text-gray-500 mt-3">{answers.filter(a=>a!==null).length} of {total} answered</p>
           </div>
-          <div className="bg-[#085041] rounded-2xl p-5 text-white">
-            <p className="text-[10px] font-bold tracking-widest text-white/50">CONFIDENTIAL</p>
-            <p className="text-[12px] text-white/80 mt-2">Only your GCO counselor can view this. RA 10173 protected.</p>
-          </div>
+          <div className="bg-[#085041] rounded-2xl p-5 text-white"><p className="text-[10px] font-bold tracking-widest text-white/50">CONFIDENTIAL</p><p className="text-[12px] text-white/80 mt-2">Only your GCO counselor can view this. RA 10173 protected.</p></div>
         </div>
       </div>
     </div>
   )
 }
-
 export default function Assessment() {
   const [view, setView] = useState('list')
+  const [completed, setCompleted] = useState([])
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('student') || localStorage.getItem('gco_user') || '{}')
+    const sid = storedUser.student_id || storedUser.student_number || '202311325'
+    fetch(BASE + '/get_results.php?student_id=' + sid)
+      .then(r=>r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setCompleted(data.map(d => d.exam_type === 'Well-Being' ? 'wellbeing' : d.exam_type === 'Personality' ? 'personality' : d.exam_type.toLowerCase()))
+        }
+      }).catch(()=>{})
+  }, [view])
   if (view!== 'list') return <ExamScreen type={view} onBack={() => setView('list')} />
-
+  const isDone = (key) => completed.includes(key)
   return (
-    <div className="bg-[#f6f8f7] h-[calc(100vh-64px)] flex flex-col overflow-hidden">
-      {/* HEADER - GITNA NA */}
+    <div className="bg-[#f6f8f7] w-full flex flex-col">
       <div className="bg-[#085041] px-6 md:px-10 py-8 md:py-10 flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between shrink-0">
         <div className="flex-1 flex flex-col justify-center">
           <h2 className="text-[32px] md:text-[40px] font-bold text-white leading-[0.95] tracking-tight">Initial Assessment</h2>
@@ -164,25 +177,24 @@ export default function Assessment() {
         <div className="w-full lg:w-[360px] bg-[#0a5a49] border border-white/10 rounded-2xl p-5 shrink-0">
           <p className="text-[10px] font-bold tracking-widest text-white/40 mb-3">YOUR PROGRESS</p>
           <div className="flex gap-3">
-            <div className="flex-1 bg-white/10 rounded-xl p-3 text-center"><p className="text-[20px] font-bold text-white">0/2</p><p className="text-[10px] text-white/50 mt-1">Completed</p></div>
+            <div className="flex-1 bg-white/10 rounded-xl p-3 text-center"><p className="text-[20px] font-bold text-white">{completed.length}/2</p><p className="text-[10px] text-white/50 mt-1">Completed</p></div>
             <div className="flex-1 bg-white/10 rounded-xl p-3 text-center"><p className="text-[20px] font-bold text-white">20</p><p className="text-[10px] text-white/50 mt-1">Total items</p></div>
           </div>
           <p className="text-[10px] text-white/50 mt-3">Confidential. Only your GCO counselor sees this. RA 10173.</p>
         </div>
       </div>
-
-      {/* CONTENT - DI NA SCROLLABLE SA PC */}
-      <div className="flex-1 px-4 md:px-10 py-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 max-w-[1280px] mx-auto w-full overflow-y-auto lg:overflow-hidden">
+      <div className="px-4 md:px-10 py-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 max-w-[1280px] mx-auto w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 h-fit">
           {Object.keys(exams).map((key) => {
             const ex = exams[key]
+            const done = isDone(key)
             return (
-              <div key={key} className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col group hover:shadow-[0_12px_32px_rgba(8,80,65,0.14)] hover:-translate-y-[1px] transition-all">
-                <div className="w-10 h-10 rounded-xl bg-[#E8F5F1] flex items-center justify-center text-[#085041] font-bold text-[14px] group-hover:bg-[#085041] group-hover:text-white transition-colors">{key==='personality'? 'P' : 'W'}</div>
-                <p className="text-[15px] font-bold text-gray-900 mt-4">{ex.title}</p>
+              <div key={key} className={'bg-white rounded-2xl border p-6 flex flex-col group hover:shadow-[0_12px_32px_rgba(8,80,65,0.14)] hover:-translate-y-[1px] transition-all ' + (done ? 'border-green-300' : 'border-gray-200')}>
+                <div className={'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[14px] ' + (done ? 'bg-green-600 text-white' : 'bg-[#E8F5F1] text-[#085041] group-hover:bg-[#085041] group-hover:text-white') + ' transition-colors'}>{done ? '✓' : key==='personality'? 'P' : 'W'}</div>
+                <p className="text-[15px] font-bold text-gray-900 mt-4">{ex.title} {done && <span className="text-green-600 text-[11px]">• DONE</span>}</p>
                 <p className="text-[12px] text-gray-500 mt-1.5 leading-relaxed flex-1">{ex.desc}</p>
                 <p className="text-[10px] text-gray-400 mt-3">10 items • 5-10 mins</p>
-                <button onClick={() => setView(key)} className="bg-[#085041] text-white text-[12px] font-bold py-2.5 rounded-full w-full mt-4 hover:bg-[#0a5a49] active:scale-[0.98] transition-all">Start Exam →</button>
+                <button onClick={() => setView(key)} className={'text-[12px] font-bold py-2.5 rounded-full w-full mt-4 transition-all ' + (done ? 'bg-white border border-green-600 text-green-700 hover:bg-green-50' : 'bg-[#085041] text-white hover:bg-[#0a5a49]')}>{done ? 'Retake Exam' : 'Start Exam →'}</button>
               </div>
             )
           })}

@@ -4,19 +4,20 @@ import Topbar from './components/Topbar'
 import BottomNav from './components/BottomNav'
 import ErrorBoundary from './components/ErrorBoundary'
 import OfflineBanner from './components/OfflineBanner'
-import Home from './pages/Home'
-import AppointmentHistory from './pages/AppointmentHistory'
-import BookAppointment from './pages/BookAppointment'
-import Modules from './pages/Modules'
-import Assessment from './pages/Assessment'
-import AdminDashboard from './pages/AdminDashboard'
-import AdminLogin from './pages/AdminLogin'
+// STUDENT - NASA Student FOLDER LAHAT NGAYON
+import Home from './pages/Student/Home'
+import AppointmentHistory from './pages/Student/AppointmentHistory'
+import BookAppointment from './pages/Student/BookAppointment'
+import Modules from './pages/Student/Modules'
+import InitialAssessment from './pages/Student/InitialAssessment'
+import StudentLogin from './pages/StudentLogin' // <-- DAGDAG BOSS
+// ADMIN - NASA Admin FOLDER
+import AdminDashboard from './pages/Admin/AdminDashboard'
+import AdminLogin from './pages/Admin/AdminLogin'
 import { isLoggedIn } from './utils/adminAuth'
-
 // Toast Context
 export const ToastContext = createContext(null)
 export const useToast = () => useContext(ToastContext)
-
 function Toast({ message, visible }) {
   return (
     <div className={`fixed top-[80px] left-1/2 -translate-x-1/2 z-[999] bg-gray-900 bg-opacity-90 text-white text-[13px] font-semibold px-5 py-3 rounded-full shadow-lg whitespace-nowrap transition-all duration-300 ${visible? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
@@ -24,7 +25,6 @@ function Toast({ message, visible }) {
     </div>
   )
 }
-
 function NotFound({ navigate }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center px-5">
@@ -35,43 +35,49 @@ function NotFound({ navigate }) {
       </div>
       <p className="text-[20px] font-bold text-gray-900 mb-2">Page Not Found</p>
       <p className="text-[14px] text-gray-500 mb-6">The page you're looking for doesn't exist.</p>
-      <button onClick={() => navigate('/')} className="bg-[#085041] text-white px-6 py-3 rounded-full text-[14px] font-semibold">
-        Go Home
-      </button>
+      <button onClick={() => navigate('/')} className="bg-[#085041] text-white px-6 py-3 rounded-full text-[14px] font-semibold"> Go Home </button>
     </div>
   )
 }
-
+// --- PROTECTION PARA SA STUDENT - KATULAD NG ADMIN ---
+function RequireStudentAuth({ children }) {
+  const student = localStorage.getItem('student')
+  if (!student) {
+    return <Navigate to="/login" replace />
+  }
+  return children
+}
 // Student-facing layout: Topbar + BottomNav + OfflineBanner
 function StudentLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [toast, setToast] = useState({ message: '', visible: false })
   let toastTimer = null
-
   const showToast = useCallback((msg) => {
     clearTimeout(toastTimer)
     setToast({ message: msg, visible: true })
     toastTimer = setTimeout(() => setToast(t => ({...t, visible: false })), 2500)
   }, [])
-
   const goTo = useCallback((path) => {
     navigate(path)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [navigate])
-
   const pageId = location.pathname === '/'? 'home' : location.pathname.replace('/', '')
-
   return (
     <ToastContext.Provider value={showToast}>
-      <div className="bg-[#f4f9f7] min-h-screen">
-        <OfflineBanner />
-        <Topbar page={pageId} navigate={goTo} />
+      {/* [FIX] Dati: min-h-screen lang, tapos pt-[60px] para iwas sa fixed Topbar. Ngayon: flex-col + sticky header, buong page na yung nag-scroll */}
+      <div className="bg-[#f4f9f7] min-h-screen flex flex-col">
+        {/* STICKY HEADER - sumasama sa scroll, hindi napuputol, hindi naka-fixed */}
+        <div className="sticky top-0 z-50">
+          <OfflineBanner />
+          <Topbar page={pageId} navigate={goTo} />
+        </div>
         <Toast message={toast.message} visible={toast.visible} />
-        <div className="pt-[60px] pb-20 md:pb-0">
+        {/* [FIX] Tinanggal ko yung pt-[60px] kasi hindi na fixed yung Topbar. flex-1 para humaba yung content ng natural */}
+        <div className="flex-1 w-full pb-20 md:pb-0">
           <Routes>
             <Route path="/" element={<Home navigate={goTo} />} />
-            <Route path="/initial-assessment" element={<Assessment showToast={showToast} />} />
+            <Route path="/initial-assessment" element={<InitialAssessment showToast={showToast} />} />
             <Route path="/modules" element={<Modules showToast={showToast} />} />
             <Route path="/book-appointment" element={<BookAppointment showToast={showToast} />} />
             <Route path="/appointment-history" element={<AppointmentHistory showToast={showToast} />} />
@@ -86,25 +92,29 @@ function StudentLayout() {
     </ToastContext.Provider>
   )
 }
-
 // Gated admin area
 function AdminArea() {
   const [authed, setAuthed] = useState(isLoggedIn())
-  useEffect(() => {
-    setAuthed(isLoggedIn())
-  }, [])
+  useEffect(() => { setAuthed(isLoggedIn()) }, [])
   if (!authed) {
     return <AdminLogin onSuccess={() => setAuthed(true)} />
   }
   return <AdminDashboard onLogout={() => setAuthed(false)} />
 }
-
 export default function App() {
   return (
     <ErrorBoundary>
       <Routes>
+        {/* STUDENT LOGIN - MALINIS, WALANG TOPBAR/BOTTOMNAV */}
+        <Route path="/login" element={<StudentLogin />} />
+        {/* ADMIN */}
         <Route path="/admin/*" element={<AdminArea />} />
-        <Route path="/*" element={<StudentLayout />} />
+        {/* STUDENT - PROTECTED - NEED LOGIN BAGO MAKITA */}
+        <Route path="/*" element={
+          <RequireStudentAuth>
+            <StudentLayout />
+          </RequireStudentAuth>
+        } />
       </Routes>
     </ErrorBoundary>
   )
