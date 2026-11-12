@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { login } from '../../utils/adminAuth'
 
 export default function AdminLogin({ onSuccess }) {
@@ -6,21 +7,20 @@ export default function AdminLogin({ onSuccess }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [showHint, setShowHint] = useState(false)
+  const [locked, setLocked] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setLocked(false)
     setSubmitting(true)
-    await new Promise(r => setTimeout(r, 500))
-
-    const result = login(username.trim(), password)
+    const result = await login(username.trim(), password)
     setSubmitting(false)
-
     if (result.success) {
       onSuccess()
     } else {
       setError(result.message)
+      if (result.locked) setLocked(true)
     }
   }
 
@@ -47,7 +47,8 @@ export default function AdminLogin({ onSuccess }) {
               onChange={e => setUsername(e.target.value)}
               placeholder="Enter your username"
               autoComplete="username"
-              className="w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-3 text-[15px] outline-none focus:border-[#1D9E75] transition-all"
+              disabled={locked}
+              className="w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-3 text-[15px] outline-none focus:border-[#1D9E75] transition-all disabled:bg-gray-100"
               required
             />
           </div>
@@ -60,40 +61,36 @@ export default function AdminLogin({ onSuccess }) {
               onChange={e => setPassword(e.target.value)}
               placeholder="Enter your password"
               autoComplete="current-password"
-              className="w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-3 text-[15px] outline-none focus:border-[#1D9E75] transition-all"
+              disabled={locked}
+              className="w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-3 text-[15px] outline-none focus:border-[#1D9E75] transition-all disabled:bg-gray-100"
               required
             />
           </div>
 
+          <div className="flex justify-end mb-2">
+            <Link to="/admin/forgot-password" className="text-[12.5px] text-[#085041] font-semibold hover:underline">
+              Forgot Password?
+            </Link>
+          </div>
+
           {error && (
-            <p className="text-red-500 text-[12.5px] mb-3 flex items-center gap-1.5">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 flex-shrink-0">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            <p className={`text-[12.5px] mb-3 flex items-start gap-1.5 ${locked ? 'text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5' : 'text-red-500'}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5 flex-shrink-0 mt-0.5">
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              {error}
+              {/* FIX: Tinanggal ko yung pangalawang "A security alert was sent..." Nasa backend message na yan, kaya isa na lang lalabas ngayon */}
+              <span>{error}</span>
             </p>
           )}
 
           <button
             type="submit"
-            disabled={submitting}
-            className={`w-full py-3.5 rounded-full text-[14.5px] font-semibold mt-3 transition-all ${submitting ? 'bg-gray-300 text-gray-500' : 'bg-[#085041] text-white'}`}>
-            {submitting ? 'Signing in...' : 'Sign In'}
+            disabled={submitting || locked}
+            className={`w-full py-3.5 rounded-full text-[14.5px] font-semibold mt-3 transition-all ${submitting || locked ? 'bg-gray-300 text-gray-500' : 'bg-[#085041] text-white'}`}
+          >
+            {submitting ? 'Signing in...' : locked ? 'Account Locked' : 'Sign In'}
           </button>
         </form>
-
-        <div className="mt-4 text-center">
-          <button onClick={() => setShowHint(!showHint)} className="text-[12px] text-gray-400 underline">
-            {showHint ? 'Hide demo credentials' : 'Show demo credentials'}
-          </button>
-          {showHint && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2 text-left">
-              <p className="text-[11.5px] text-amber-800">Username: <strong>admin</strong></p>
-              <p className="text-[11.5px] text-amber-800">Password: <strong>gco2026</strong></p>
-              <p className="text-[10.5px] text-amber-600 mt-1.5">This is a prototype login only. Real staff authentication will be integrated by the university IT team.</p>
-            </div>
-          )}
-        </div>
 
         <p className="text-center text-[11.5px] text-gray-400 mt-5">
           Having trouble signing in? Contact the CvSU Imus IT Office.

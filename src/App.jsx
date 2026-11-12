@@ -12,10 +12,13 @@ import BookAppointment from './pages/Student/BookAppointment'
 import Modules from './pages/Student/Modules'
 import InitialAssessment from './pages/Student/InitialAssessment'
 import StudentLogin from './pages/StudentLogin'
+import Register from './pages/Register'
 
 // ADMIN - NASA admin FOLDER - MALIIT NA a, YAN YUNG NASA dir MO
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLogin from './pages/admin/AdminLogin'
+import AdminForgotPassword from './pages/admin/AdminForgotPassword'
+import AdminResetPassword from './pages/admin/AdminResetPassword'
 import { isLoggedIn } from './utils/adminAuth'
 
 // Toast Context
@@ -62,20 +65,16 @@ function StudentLayout() {
   const location = useLocation()
   const [toast, setToast] = useState({ message: '', visible: false })
   let toastTimer = null
-
   const showToast = useCallback((msg) => {
     clearTimeout(toastTimer)
     setToast({ message: msg, visible: true })
     toastTimer = setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500)
   }, [])
-
   const goTo = useCallback((path) => {
     navigate(path)
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [navigate])
-
   const pageId = location.pathname === '/' ? 'home' : location.pathname.replace('/', '')
-
   return (
     <ToastContext.Provider value={showToast}>
       <div className="bg-[#f4f9f7] min-h-screen flex flex-col">
@@ -120,6 +119,9 @@ export default function App() {
     <ErrorBoundary>
       <Routes>
         <Route path="/login" element={<StudentLogin />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+        <Route path="/admin/reset-password" element={<AdminResetPassword />} />
         <Route path="/admin/*" element={<AdminArea />} />
         <Route path="/*" element={
           <RequireStudentAuth>

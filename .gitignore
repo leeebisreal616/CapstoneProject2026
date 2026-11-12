@@ -6,7 +6,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
 node_modules
 dist
 dist-ssr
@@ -22,3 +21,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backend - GCO API secrets, WAG I-PUSH
+# Nandito yung totoong DB password at Gmail App Password mo
+gco-api/db.php
+gco-api/mailer.php
+gco-api/config.php
+gco-api/.env
+
+# Pero WAG i-ignore yung example files, kailangan yan ng kagrupo mo
+!gco-api/db.example.php
+!gco-api/mailer.example.php
+!gco-api/config.example.php
