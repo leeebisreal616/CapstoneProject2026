@@ -7,7 +7,6 @@ import AssessmentResults from './Assessment'
 import ModulesManagement from './Modules'
 import AnnouncementsManagement from './Announcements'
 import StudentDirectory from './StudentsDirectory'
-// [ADD - REPORT] - Step 3
 import AdminReport from './AdminReport'
 
 const Icon = {
@@ -47,7 +46,6 @@ const Icon = {
       <path d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 1.13a4 4 0 00-3-3.87M17 12a4 4 0 100-8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
-  // [ADD - REPORT] - icon for Reports
   report: (c) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
       <path d="M3 3v18h18M7 15v-4M11 19v-8M15 13V7M19 17v-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -71,51 +69,67 @@ const Icon = {
 }
 
 const navItems = [
-  { id: 'overview', label: 'Dashboard', icon: Icon.overview },
-  { id: 'appointments', label: 'Appointments', icon: Icon.appointments },
-  { id: 'inventory', label: 'Inventory', icon: Icon.inventory },
-  { id: 'assessment', label: 'Assessment Results', icon: Icon.assessment },
-  { id: 'modules', label: 'Modules', icon: Icon.modules },
-  { id: 'announcements', label: 'Announcements', icon: Icon.announcements },
-  { id: 'students', label: 'Students Directory', icon: Icon.students },
-  // [ADD - REPORT] - lalabas sa sidebar
-  { id: 'report', label: 'Reports', icon: Icon.report },
+  { id: 'overview', label: 'Dashboard', icon: Icon.overview, group: 'Menu' },
+  { id: 'appointments', label: 'Appointments', icon: Icon.appointments, group: 'Menu' },
+  { id: 'inventory', label: 'Inventory', icon: Icon.inventory, group: 'Menu' },
+  { id: 'assessment', label: 'Assessment Results', icon: Icon.assessment, group: 'Menu' },
+  { id: 'modules', label: 'Modules', icon: Icon.modules, group: 'Menu' },
+  { id: 'announcements', label: 'Announcements', icon: Icon.announcements, group: 'Menu' },
+  { id: 'students', label: 'Students Directory', icon: Icon.students, group: 'Menu' },
+  { id: 'report', label: 'Reports', icon: Icon.report, group: 'Menu' },
 ]
 
 function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout }) {
   return (
     <>
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-[2px]" onClick={() => setMobileOpen(false)} />
       )}
-      <div className={`fixed top-0 left-0 h-screen w-[240px] bg-[#085041] flex flex-col z-50 transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:sticky`}>
-        <div className="flex items-center gap-2.5 px-4 py-4 border-b border-white/10">
-          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center overflow-hidden">
+      <div className={`fixed top-0 left-0 h-screen w-[264px] bg-[#085041] flex flex-col z-50 transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:sticky shrink-0`}>
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-5 py-5">
+          <div className="w-10 h-10 rounded-[12px] bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
             <img src="/gco-seal.png" alt="GCO" className="w-full h-full object-cover" />
           </div>
-          <p className="text-white text-[12px] font-semibold leading-tight">GCO Admin</p>
+          <div className="leading-tight">
+            <p className="text-white text-[14px] font-bold tracking-tight">GCO Admin</p>
+            <p className="text-white/50 text-[11px] font-medium">CvSU Imus • Guidance</p>
+          </div>
           <button className="ml-auto lg:hidden w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70" onClick={() => setMobileOpen(false)}>
             {Icon.x('w-3.5 h-3.5')}
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto py-3 px-2.5 flex flex-col gap-0.5">
+
+        {/* Nav */}
+        <div className="flex-1 overflow-y-auto py-2 px-3 flex flex-col gap-1">
+          <p className="text-white/40 text-[10px] font-bold tracking-[0.12em] uppercase px-3 pb-1.5 pt-1">Menu</p>
           {navItems.map((item) => {
             const isActive = view === item.id
             return (
               <button
                 key={item.id}
                 onClick={() => { setView(item.id); setMobileOpen(false) }}
-                className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] font-medium transition-colors ${isActive ? 'bg-white text-[#085041]' : 'text-white/60 hover:text-white hover:bg-white/10'}`}
+                className={`flex items-center gap-3 px-3 py-[9px] rounded-[12px] text-[13px] font-medium transition-all ${isActive ? 'bg-white text-[#085041] shadow-[0_4px_16px_rgba(0,0,0,0.15)] font-semibold' : 'text-white/65 hover:text-white hover:bg-white/10'}`}
               >
-                {item.icon('w-[16px] h-[16px]')}
+                {item.icon('w-[18px] h-[18px] shrink-0')}
                 <span className="flex-1 text-left">{item.label}</span>
+                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#085041]" />}
               </button>
             )
           })}
         </div>
-        <div className="border-t border-white/10 px-2.5 py-3">
-          <button onClick={onLogout} className="flex items-center gap-2 text-white/50 text-[11px] px-2.5 py-1.5 rounded-lg w-full hover:text-white hover:bg-white/10 transition-colors">
-            {Icon.logout('w-3.5 h-3.5')} Logout
+
+        {/* Counselor + Logout */}
+        <div className="px-3 pb-4 pt-2">
+          <div className="bg-white/[0.08] border border-white/10 rounded-[14px] p-3 mb-2 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#085041] text-[12px] font-bold shrink-0">G</div>
+            <div className="min-w-0 leading-tight">
+              <p className="text-white text-[12.5px] font-semibold truncate">Guidance Counselor</p>
+              <p className="text-white/50 text-[11px] truncate">Admin Portal</p>
+            </div>
+          </div>
+          <button onClick={onLogout} className="flex items-center gap-2.5 text-white/60 text-[12px] font-medium px-3 py-2 rounded-[12px] w-full hover:text-white hover:bg-white/10 transition-colors">
+            {Icon.logout('w-4 h-4')} Logout
           </button>
         </div>
       </div>
@@ -126,7 +140,6 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout }) {
 export default function AdminDashboard({ onLogout }) {
   const [view, setView] = useState('overview')
   const [mobileOpen, setMobileOpen] = useState(false)
-
   const views = {
     overview: <Overview setView={setView} />,
     appointments: <Appointments />,
@@ -135,21 +148,21 @@ export default function AdminDashboard({ onLogout }) {
     modules: <ModulesManagement />,
     announcements: <AnnouncementsManagement />,
     students: <StudentDirectory />,
-    // [ADD - REPORT]
     report: <AdminReport />,
   }
-
   return (
-    <div className="flex min-h-screen bg-[#f6f8f7]">
+    <div className="flex min-h-screen bg-[#F4F7F5] font-sans">
       <Sidebar view={view} setView={setView} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} onLogout={() => { logout(); onLogout?.() }} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-2.5 flex items-center gap-2.5">
-          <button className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600" onClick={() => setMobileOpen(true)}>
+        <div className="lg:hidden sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center gap-2.5">
+          <button className="w-9 h-9 rounded-[10px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shadow-sm" onClick={() => setMobileOpen(true)}>
             {Icon.menu('w-4 h-4')}
           </button>
-          <p className="text-[12px] font-semibold text-gray-900">GCO Admin</p>
+          <p className="text-[13px] font-bold text-gray-900 tracking-tight">GCO Admin</p>
+          <span className="ml-auto text-[11px] text-gray-400 font-medium">CvSU Imus</span>
         </div>
-        <div className="flex-1">{views[view]}</div>
+        {/* Bento canvas - lahat ng pages dito papasok */}
+        <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-5 lg:py-6">{views[view]}</div>
       </div>
     </div>
   )

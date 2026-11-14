@@ -1,16 +1,38 @@
-/* ============ ANNOUNCEMENTS MANAGEMENT - HOME DESIGN SYSTEM ============ */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+
 const BASE = 'http://localhost/gco-api'
 
 function Badge({ status }) {
-  const isPublished = status==='Published' || status==='published'
-  return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] ${isPublished ? 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>{isPublished ? '● Published' : '○ Draft'}</span>
+  const isPublished = String(status || '').toLowerCase() === 'published'
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border ${isPublished ? 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${isPublished ? 'bg-[#085041]' : 'bg-gray-400'}`} />
+      {isPublished ? 'Published' : 'Draft'}
+    </span>
+  )
 }
 
 const Icon = {
-  x: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}><path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  plus: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}><path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  megaphone: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M3 11l18-5v12L3 13v-2z" strokeLinecap="round" strokeLinejoin="round"/><path d="M11.5 16.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>,
+  x: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}><path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+  plus: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}><path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+  megaphone: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M3 11l18-5v12L3 13v-2z" strokeLinecap="round" strokeLinejoin="round" /><path d="M11.5 16.5a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>,
+  search: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+}
+
+// Puting Modal — pamalit sa confirm() / alert(). Same style sa Appointments v4 at Modules v2.
+function ConfirmModal({ title, message, confirmLabel, isDanger, onCancel, onConfirm }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/40 backdrop-blur-[2px]" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="bg-white rounded-[20px] p-6 w-full max-w-sm shadow-2xl">
+        <p className="text-[16px] font-bold text-gray-900">{title}</p>
+        <p className="text-[13px] text-gray-500 mt-2 leading-relaxed">{message}</p>
+        <div className="flex gap-2 mt-5">
+          <button onClick={onCancel} className="flex-1 border border-gray-200 rounded-full py-2.5 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={onConfirm} className={`flex-1 text-white rounded-full py-2.5 text-[13px] font-bold ${isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-[#085041] hover:bg-[#06382D]'}`}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function AnnouncementsManagement() {
@@ -18,13 +40,18 @@ export default function AnnouncementsManagement() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ title: '', desc: '', status: 'Draft' })
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [formError, setFormError] = useState('')
+  const [pageError, setPageError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [confirmToggle, setConfirmToggle] = useState(null)
 
   const fetchLive = async () => {
     try {
       setLoading(true)
       const res = await fetch(`${BASE}/announcements/get_announcements.php`)
       const data = await res.json()
-      // [FIX] Tanggapin lahat: array, {announcements:[]}, {data:[]}
       const list = Array.isArray(data) ? data : data.announcements || data.data || data.result || []
       const mapped = list.map(row => ({
         id: row.id || row.announcement_id,
@@ -34,155 +61,231 @@ export default function AnnouncementsManagement() {
         status: row.status || 'Draft',
         raw: row,
       }))
-      setAnnouncements(mapped.sort((a,b) => new Date(b.date) - new Date(a.date)))
-    } catch (e) { setAnnouncements([]) }
-    finally { setLoading(false) }
+      setAnnouncements(mapped.sort((a, b) => new Date(b.date) - new Date(a.date)))
+    } catch (e) { setAnnouncements([]) } finally { setLoading(false) }
   }
+
   useEffect(() => { fetchLive() }, [])
 
-  // CLEAN LOGIC: yung button mismo yung status. Walang dropdown.
-  // Draft = nakatago sa student, Published = makikita sa Home
   const handleSave = async (wantStatus) => {
     const statusToSave = wantStatus || form.status
-    if (!form.title.trim()) return alert('Lagyan mo ng title boss!')
-    if (!form.desc.trim()) return alert('Lagyan mo ng description boss!')
+    if (!form.title.trim()) {
+      setFormError('Please enter a title.')
+      return
+    }
+    if (!form.desc.trim()) {
+      setFormError('Please enter a description.')
+      return
+    }
+    setFormError('')
     try {
-      if (editing) {
-        // Pag nag-e-edit: Save lang yung text, hindi nagbabago status maliban kung pinindot mo yung Publish/Unpublish sa listahan
-        await fetch(`${BASE}/announcements/update_announcement.php`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: editing.id, announcement_id: editing.id, title: form.title, description: form.desc, status: statusToSave })
-        })
-      } else {
-        await fetch(`${BASE}/announcements/create_announcement.php`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: form.title, description: form.desc, status: statusToSave })
-        })
+      const res = editing
+        ? await fetch(`${BASE}/announcements/update_announcement.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: editing.id, announcement_id: editing.id, title: form.title, description: form.desc, status: statusToSave })
+          })
+        : await fetch(`${BASE}/announcements/create_announcement.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: form.title, description: form.desc, status: statusToSave })
+          })
+      const result = await res.json().catch(() => ({}))
+      if (result && result.success === false) {
+        setFormError('Failed to save announcement: ' + (result.message || 'Please check the server.'))
+        return
       }
-      setForm({ title: '', desc: '', status: 'Draft' }); setEditing(null); fetchLive()
-    } catch (err) { alert('Failed - check create_announcement.php / update_announcement.php mo boss') }
+      setForm({ title: '', desc: '', status: 'Draft' })
+      setEditing(null)
+      fetchLive()
+    } catch (err) {
+      setFormError('Failed to save announcement. Please check create_announcement.php or update_announcement.php.')
+    }
   }
 
-  // 1 CLICK TOGGLE - hindi mo na kailangan mag-Edit para lang mag-Publish
-  const handleToggle = async (item) => {
-    const newStatus = (item.status || '').toLowerCase() === 'published' ? 'Draft' : 'Published'
+  // NGAYON: hindi na biglaang Publish / Unpublish — may Modal muna
+  const handleToggle = (item) => {
+    setConfirmToggle(item)
+  }
+
+  const confirmToggleAnnouncement = async () => {
+    if (!confirmToggle) return
+    const newStatus = (confirmToggle.status || '').toLowerCase() === 'published' ? 'Draft' : 'Published'
     try {
       await fetch(`${BASE}/announcements/update_announcement.php`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id, announcement_id: item.id, title: item.title, description: item.desc, status: newStatus })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmToggle.id, announcement_id: confirmToggle.id, title: confirmToggle.title, description: confirmToggle.desc, status: newStatus })
       })
+      setConfirmToggle(null)
       fetchLive()
-    } catch { alert('Toggle failed') }
+    } catch {
+      setConfirmToggle(null)
+      setPageError('Failed to update announcement status.')
+    }
   }
 
-  const handleDelete = async (id) => {
-    if(!confirm('Delete this announcement boss? Mawawala din sa student side!')) return
+  // NGAYON: hindi na confirm(), bubukas lang ng Modal
+  const handleDelete = (item) => {
+    setConfirmDelete(item)
+  }
+
+  const confirmDeleteAnnouncement = async () => {
+    if (!confirmDelete) return
     try {
       await fetch(`${BASE}/announcements/delete_announcement.php`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, announcement_id: id })
-      }); fetchLive()
-    } catch { alert('Delete failed') }
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmDelete.id, announcement_id: confirmDelete.id })
+      })
+      setConfirmDelete(null)
+      fetchLive()
+    } catch {
+      setConfirmDelete(null)
+      setPageError('Failed to delete announcement.')
+    }
   }
 
   const handleEdit = (item) => {
     setEditing(item)
+    setFormError('')
     setForm({ title: item.title, desc: item.desc, status: item.status })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  if (loading) return <div className="bg-[#f6f8f7] min-h-[calc(100vh-64px)] p-10 text-center text-[13px] text-gray-400">Loading announcements from gco-api...</div>
+  const isTestData = (a) => {
+    const t = `${a.title || ''} ${a.desc || ''}`.toLowerCase()
+    return t.length < 10 || ['wwwe', 'wewew', 'wews', 'try lang', 'test', 'asdf'].some(w => t.includes(w))
+  }
 
-  const publishedCount = announcements.filter(a => (a.status || '').toLowerCase() === 'published').length
+  const stats = useMemo(() => ({
+    total: announcements.length,
+    published: announcements.filter(a => (a.status || '').toLowerCase() === 'published').length,
+    draft: announcements.filter(a => (a.status || '').toLowerCase() !== 'published').length,
+  }), [announcements])
+
+  const filtered = useMemo(() => {
+    let list = filter === 'all' ? announcements : filter === 'published' ? announcements.filter(a => (a.status || '').toLowerCase() === 'published') : announcements.filter(a => (a.status || '').toLowerCase() !== 'published')
+    if (search.trim()) list = list.filter(a => a.title.toLowerCase().includes(search.trim().toLowerCase()) || (a.desc || '').toLowerCase().includes(search.trim().toLowerCase()))
+    return list
+  }, [announcements, filter, search])
+
+  if (loading) return <div className="p-6 text-[13px] text-gray-400">Loading announcements...</div>
 
   return (
-    <div className="bg-[#f6f8f7] min-h-[calc(100vh-64px)] flex flex-col p-5 md:p-6">
-      {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-[22px] font-bold text-gray-900 leading-tight">Announcements</h1>
-        <p className="text-[13px] text-gray-500 mt-1">{announcements.length} total • <span className="text-[#085041] font-bold">{publishedCount} Published</span> = makikita ng student sa Home • <span className="text-gray-400">{announcements.length - publishedCount} Draft</span> = nakatago</p>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[20px] font-extrabold text-gray-900 tracking-tight leading-tight">Announcements</h1>
+          <p className="text-[12.5px] text-gray-500 mt-0.5">{stats.total} total • <span className="text-[#085041] font-bold">{stats.published} Published</span> = visible on Home • {stats.draft} Draft = hidden</p>
+        </div>
+        <button onClick={fetchLive} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
       </div>
 
-      {/* Create Form - HOME CARD */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(8,80,65,0.12)] hover:border-[#085041]/20">
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${editing ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-[#E8F5F1] text-[#085041] border border-[#9FE1CB]'}`}>{Icon.megaphone('w-5 h-5')}</div>
-          <div>
-            <p className="text-[15px] font-bold text-gray-900">{editing ? 'Edit Announcement' : 'Create Announcement'}</p>
-            <p className="text-[11px] text-gray-500">{editing ? `Editing ID: ${editing.id} • Status ngayon: ${editing.status} — yung text lang mababago dito` : 'Pili ka lang: Save as Draft o Publish Now'}</p>
-          </div>
-          {editing && <button onClick={()=>{setEditing(null); setForm({title:'',desc:'',status:'Draft'})}} className="ml-auto w-8 h-8 rounded-full bg-[#f6f8f7] border border-gray-100 flex items-center justify-center text-gray-500 transition-all duration-200 hover:bg-gray-100 hover:text-gray-700 active:scale-[0.95]">{Icon.x('w-4 h-4')}</button>}
-        </div>
+      {pageError && <div className="bg-red-50 border border-red-200 text-red-700 text-[12.5px] font-medium px-4 py-2.5 rounded-[14px]">{pageError} <button onClick={() => setPageError('')} className="ml-2 font-bold underline">Dismiss</button></div>}
 
-        <div className="flex flex-col gap-3">
-          <div>
-            <label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Title</label>
-            <input value={form.title} onChange={e=>setForm({...form, title: e.target.value})} placeholder="Title e.g. No Walk-in Sessions This Week" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-[13px] outline-none transition-all duration-200 hover:border-[#085041]/30 focus:border-[#085041] focus:shadow-[0_0_0_3px_rgba(8,80,65,0.1)]" />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Description</label>
-            <textarea value={form.desc} onChange={e=>setForm({...form, desc: e.target.value})} placeholder="Description ng announcement" rows={3} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-[13px] outline-none focus:border-[#085041] focus:shadow-[0_0_0_3px_rgba(8,80,65,0.1)] hover:border-[#085041]/30 transition-all duration-200 resize-none" />
-          </div>
+      <div className="grid grid-cols-3 gap-3">
+        <button onClick={() => setFilter('all')} className={`bg-white border border-gray-100 rounded-[20px] p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${filter === 'all' ? 'ring-2 ring-[#085041]/20 border-[#085041]/30' : ''}`}><p className="text-[24px] font-extrabold text-gray-900 leading-none">{stats.total}</p><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase mt-1.5">Total</p></button>
+        <button onClick={() => setFilter('published')} className={`bg-white border border-gray-100 rounded-[20px] p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${filter === 'published' ? 'ring-2 ring-[#085041]/20 border-[#085041]/30' : ''}`}><p className="text-[24px] font-extrabold text-[#085041] leading-none">{stats.published}</p><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase mt-1.5">Published</p></button>
+        <button onClick={() => setFilter('draft')} className={`bg-white border border-gray-100 rounded-[20px] p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${filter === 'draft' ? 'ring-2 ring-gray-400/30 border-gray-400/40' : ''}`}><p className="text-[24px] font-extrabold text-gray-500 leading-none">{stats.draft}</p><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase mt-1.5">Draft</p></button>
+      </div>
 
-          {/* CLEAN BUTTONS - WALANG DROPDOWN NA */}
-          {editing ? (
-            <div className="flex gap-2 items-center flex-wrap">
-              <button onClick={() => handleSave(editing.status)} className="bg-[#085041] text-white px-6 py-2.5 rounded-full text-[13px] font-bold flex items-center gap-1.5 transition-all duration-200 hover:shadow-[0_4px_16px_rgba(8,80,65,0.25)] hover:-translate-y-[1px] active:scale-[0.98]">💾 Save Changes</button>
-              <button onClick={()=>{setEditing(null); setForm({title:'',desc:'',status:'Draft'})}} className="bg-[#f6f8f7] border border-gray-200 px-5 py-2.5 rounded-full text-[13px] font-bold text-gray-600 transition-all duration-200 hover:bg-white hover:border-gray-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.98]">Cancel</button>
-              <span className="text-[11px] text-gray-400 ml-1">Gusto mo baguhin status? Gamitin mo yung Publish / Unpublish button sa listahan sa baba.</span>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 items-start">
+        <div className="space-y-3 order-2 lg:order-1">
+          <div className="bg-white border border-gray-100 rounded-[20px] p-3 flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+            <div className="flex gap-1.5">
+              <button onClick={() => setFilter('all')} className={`text-[12px] font-semibold px-3.5 py-1.5 rounded-full border ${filter === 'all' ? 'bg-[#085041] text-white border-[#085041]' : 'bg-white text-gray-600 border-gray-200'}`}>All</button>
+              <button onClick={() => setFilter('published')} className={`text-[12px] font-semibold px-3.5 py-1.5 rounded-full border ${filter === 'published' ? 'bg-[#085041] text-white border-[#085041]' : 'bg-white text-gray-600 border-gray-200'}`}>Published</button>
+              <button onClick={() => setFilter('draft')} className={`text-[12px] font-semibold px-3.5 py-1.5 rounded-full border ${filter === 'draft' ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200'}`}>Draft</button>
             </div>
-          ) : (
-            <div className="flex gap-2 items-center flex-wrap">
-              <button onClick={() => handleSave('Draft')} className="bg-white border border-gray-300 text-gray-700 px-5 py-2.5 rounded-full text-[13px] font-bold transition-all duration-200 hover:border-gray-400 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] active:scale-[0.98]">💾 Save as Draft</button>
-              <button onClick={() => handleSave('Published')} className="bg-[#085041] text-white px-6 py-2.5 rounded-full text-[13px] font-bold flex items-center gap-1.5 transition-all duration-200 hover:shadow-[0_4px_16px_rgba(8,80,65,0.25)] hover:-translate-y-[1px] active:scale-[0.98]">{Icon.plus('w-4 h-4')} Publish Now</button>
-              <span className="text-[11px] text-gray-400 ml-1">Draft = nakatago sa students • Publish Now = makikita agad sa Home</span>
-              <button onClick={fetchLive} className="ml-auto bg-white border border-gray-200 px-4 py-2.5 rounded-full text-[12px] font-semibold text-gray-600 transition-all duration-200 hover:shadow-[0_4px_12px_rgba(8,80,65,0.08)] hover:border-[#085041]/20 hover:-translate-y-[1px] active:scale-[0.98]">Refresh</button>
+            <div className="ml-auto flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-3.5 pr-2 py-1.5 w-[180px] sm:w-[200px]">
+              {Icon.search('w-3.5 h-3.5 text-gray-400 shrink-0')}
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="bg-transparent text-[12px] w-full outline-none placeholder:text-gray-400" />
+            </div>
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="bg-white border border-gray-100 rounded-[20px] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+              <div className="w-12 h-12 rounded-[14px] bg-[#F4F7F5] border border-gray-100 flex items-center justify-center mx-auto mb-3 text-gray-400">{Icon.megaphone('w-6 h-6')}</div>
+              <p className="text-[14px] font-bold text-gray-900">No announcements yet</p>
+              <p className="text-[12px] text-gray-500 mt-1">When you create an announcement and publish it, it will appear on the student Home page.</p>
             </div>
           )}
+
+          {filtered.map(a => {
+            const isPub = (a.status || '').toLowerCase() === 'published'
+            return (
+              <div key={a.id} className="bg-white border border-gray-100 rounded-[20px] p-5 flex gap-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+                <div className="w-10 h-10 rounded-[12px] bg-[#E8F5F1] flex items-center justify-center text-[#085041] shrink-0">{Icon.megaphone('w-5 h-5')}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap"><p className="text-[14px] font-bold text-gray-900 truncate">{a.title}</p><Badge status={a.status} />{isTestData(a) && <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Possible test data</span>}</div>
+                  <p className="text-[13px] text-gray-600 leading-relaxed line-clamp-2">{a.desc}</p>
+                  <p className="text-[11px] text-gray-400 mt-2 flex items-center gap-2 flex-wrap">
+                    <span className="bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">{a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+                    <span>ID: {a.id}</span>
+                    <span>{isPub ? 'Visible to students on Home' : 'Hidden — Admin only'}</span>
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button onClick={() => handleToggle(a)} className={`text-[12px] font-bold px-4 py-1.5 rounded-full ${isPub ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200' : 'bg-[#085041] text-white hover:bg-[#06382D]'}`}>{isPub ? 'Unpublish' : 'Publish'}</button>
+                  <button onClick={() => handleEdit(a)} className="text-[12px] font-bold text-[#085041] bg-[#E1F5EE] border border-[#9FE1CB] px-4 py-1.5 rounded-full hover:bg-[#085041] hover:text-white">Edit Text</button>
+                  <button onClick={() => handleDelete(a)} className="text-[11px] font-bold text-red-600 bg-white border border-red-200 px-4 py-1.5 rounded-full hover:bg-red-50">Delete</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-[20px] p-5 order-1 lg:order-2 lg:sticky lg:top-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${editing ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-[#E8F5F1] text-[#085041] border border-[#9FE1CB]'}`}>{Icon.megaphone('w-5 h-5')}</div>
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold text-gray-900">{editing ? 'Edit Announcement' : 'Create Announcement'}</p>
+              <p className="text-[11px] text-gray-500">{editing ? `Editing ID: ${editing.id} • Status: ${editing.status}` : 'Draft = hidden • Published = visible on Home'}</p>
+            </div>
+            {editing && <button onClick={() => { setEditing(null); setFormError(''); setForm({ title: '', desc: '', status: 'Draft' }) }} className="ml-auto w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">{Icon.x('w-4 h-4')}</button>}
+          </div>
+          <div className="flex flex-col gap-3">
+            <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Title</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title e.g. No Walk-in Sessions This Week" className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#085041]" /></div>
+            <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Description</label><textarea value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} placeholder="Enter the announcement description" rows={4} className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#085041] resize-none" /></div>
+            {formError && <p className="bg-red-50 border border-red-200 text-red-700 text-[12px] font-medium px-3 py-2 rounded-xl">{formError}</p>}
+            {editing ? (
+              <div className="flex gap-2">
+                <button onClick={() => handleSave(editing.status)} className="flex-1 bg-[#085041] text-white py-2.5 rounded-full text-[13px] font-bold hover:bg-[#06382D]">Save Changes</button>
+                <button onClick={() => { setEditing(null); setFormError(''); setForm({ title: '', desc: '', status: 'Draft' }) }} className="px-4 border border-gray-200 rounded-full text-[13px] font-bold text-gray-600">Cancel</button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button onClick={() => handleSave('Published')} className="w-full bg-[#085041] text-white py-2.5 rounded-full text-[13px] font-bold flex items-center justify-center gap-1.5 hover:bg-[#06382D]">{Icon.plus('w-4 h-4')} Publish Now</button>
+                <button onClick={() => handleSave('Draft')} className="w-full bg-white border border-gray-300 text-gray-700 py-2.5 rounded-full text-[13px] font-bold hover:border-gray-400">Save as Draft</button>
+                <p className="text-[11px] text-gray-400 text-center">Draft = hidden from students • Publish = visible on Home</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* List - HOME CARD HOVER SAME AS HOME */}
-      <div className="grid gap-3">
-        {announcements.length===0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center transition-all duration-200 hover:shadow-[0_8px_24px_rgba(8,80,65,0.08)] hover:border-[#085041]/10">
-            <div className="w-12 h-12 rounded-xl bg-[#f6f8f7] border border-gray-100 flex items-center justify-center mx-auto mb-3 text-gray-400">{Icon.megaphone('w-6 h-6')}</div>
-            <p className="text-[14px] font-bold text-gray-900">No announcements yet</p>
-            <p className="text-[12px] text-gray-500 mt-1">Walang dummy boss - pag nag create ka dito, lalabas sa student Home pag Published!</p>
-            <p className="text-[11px] text-gray-400 mt-2">Live from: <code className="bg-[#f6f8f7] border border-gray-100 px-1.5 py-0.5 rounded">gco-api/announcements/get_announcements.php</code></p>
-          </div>
-        )}
-        {announcements.map(a => {
-          const isPub = (a.status || '').toLowerCase() === 'published'
-          return (
-          <div key={a.id} className="group bg-white rounded-2xl border border-gray-200 p-5 flex gap-4 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(8,80,65,0.12)] hover:border-[#085041]/20 hover:-translate-y-[1px]">
-            <div className="w-10 h-10 rounded-xl bg-[#E8F5F1] flex items-center justify-center text-[#085041] flex-shrink-0 transition-all duration-200 group-hover:bg-[#085041] group-hover:text-white group-hover:shadow-[0_4px_12px_rgba(8,80,65,0.2)]">{Icon.megaphone('w-5 h-5')}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap"><p className="text-[14px] font-bold text-gray-900 group-hover:text-[#085041] transition-colors duration-200 truncate">{a.title}</p><Badge status={a.status}/></div>
-              <p className="text-[13px] text-gray-600 leading-relaxed line-clamp-2">{a.desc}</p>
-              <p className="text-[11px] text-gray-400 mt-2 flex items-center gap-2">
-                <span className="bg-[#f6f8f7] border border-gray-100 px-2 py-0.5 rounded-full">{a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
-                <span>ID: {a.id}</span>
-                <span>{isPub ? '✅ Makikita ng students sa Home' : '👁️‍🗨️ Nakatago — Admin lang nakakakita'}</span>
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 h-fit flex-shrink-0">
-              {/* 1-CLICK TOGGLE - ETO YUNG PINAKA-IMPORTANTE */}
-              <button onClick={()=>handleToggle(a)} className={`text-[12px] font-bold px-4 py-1.5 rounded-full transition-all duration-200 hover:-translate-y-[0.5px] active:scale-[0.98] ${isPub ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200' : 'bg-[#085041] text-white hover:shadow-[0_4px_12px_rgba(8,80,65,0.2)]'}`}>
-                {isPub ? 'Unpublish' : 'Publish'}
-              </button>
-              <button onClick={()=>handleEdit(a)} className="text-[12px] font-bold text-[#085041] bg-[#E1F5EE] border border-[#9FE1CB] px-4 py-1.5 rounded-full transition-all duration-200 hover:bg-[#085041] hover:text-white hover:border-[#085041] hover:shadow-[0_4px_12px_rgba(8,80,65,0.15)] hover:-translate-y-[0.5px] active:scale-[0.98]">Edit Text</button>
-              <button onClick={()=>handleDelete(a.id)} className="text-[11px] font-bold text-red-600 bg-white border border-red-200 px-4 py-1.5 rounded-full transition-all duration-200 hover:bg-red-50 hover:border-red-300 hover:shadow-[0_2px_8px_rgba(220,38,38,0.12)] hover:-translate-y-[0.5px] active:scale-[0.98]">Delete</button>
-            </div>
-          </div>
-          )
-        })}
-      </div>
+      {confirmToggle && (
+        <ConfirmModal
+          title={(confirmToggle.status || '').toLowerCase() === 'published' ? 'Unpublish Announcement?' : 'Publish Announcement?'}
+          message={(confirmToggle.status || '').toLowerCase() === 'published' ? `Unpublish "${confirmToggle.title}"? It will be hidden from students.` : `Publish "${confirmToggle.title}"? It will be visible to students on Home.`}
+          confirmLabel={(confirmToggle.status || '').toLowerCase() === 'published' ? 'Unpublish' : 'Publish'}
+          isDanger={false}
+          onCancel={() => setConfirmToggle(null)}
+          onConfirm={confirmToggleAnnouncement}
+        />
+      )}
 
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 mt-6 transition-all duration-200 hover:shadow-[0_4px_12px_rgba(8,80,65,0.08)] hover:border-[#085041]/10">
-        <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1">Paano ba gumagana?</p>
-        <p className="text-[11px] text-gray-600 leading-relaxed">💾 <b>Draft</b> = naka-save lang, hindi makikita ng student. 🚀 <b>Published</b> = live na, makikita sa student Home. Gusto mo baguhin? Pindot mo lang <b>Publish / Unpublish</b> sa kanan ng bawat card — hindi mo na kailangan mag-Edit.</p>
-      </div>
+      {confirmDelete && (
+        <ConfirmModal
+          title="Delete Announcement?"
+          message={`Delete "${confirmDelete.title}"? It will no longer be visible to students. This cannot be undone.`}
+          confirmLabel="Delete"
+          isDanger={true}
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={confirmDeleteAnnouncement}
+        />
+      )}
     </div>
   )
 }

@@ -1,47 +1,123 @@
 // ============================================================
-// TEMPORARY frontend-only auth for demo/prototype purposes.
-// This must be replaced by the IT team's real backend authentication
-// (e.g. verified against the university's staff account database)
-// before this system goes into production.
+// REAL backend auth - GCO Admin Portal
+// Tumatawag na sa gco-api/admin/login.php
+// May rate limiting (3 attempts / 30 mins lock) + refresh token
 // ============================================================
 
-const SESSION_KEY = 'gco_admin_session'
+const API = 'http://localhost/gco-api/admin';
+const SESSION_KEY = 'gco_admin';
+const ACCESS_KEY = 'gco_admin_access';
+const REFRESH_KEY = 'gco_admin_refresh';
+const EXPIRES_KEY = 'gco_admin_expires';
 
-// Demo credentials — change here only, nowhere else in the codebase
-const DEMO_CREDENTIALS = {
-  username: 'admin',
-  password: 'gco2026',
+export async function login(username, password) {
+  try {
+    const res = await fetch(`${API}/login.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      return {
+        success: false,
+        message: data.message || 'Incorrect username or password.',
+        locked: data.locked || false,
+      };
+    }
+
+    // Save session + tokens
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data.admin));
+    localStorage.setItem(ACCESS_KEY, data.access_token);
+    localStorage.setItem(REFRESH_KEY, data.refresh_token);
+    localStorage.setItem(EXPIRES_KEY, String(Date.now() + data.expires_in * 1000));
+
+    return { success: true, admin: data.admin };
+  } catch (e) {
+    return { success: false, message: 'Cannot connect to server. Check if XAMPP is running.' };
+  }
 }
 
-export function login(username, password) {
-  if (username === DEMO_CREDENTIALS.username && password === DEMO_CREDENTIALS.password) {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-      username,
-      loggedInAt: new Date().toISOString(),
-    }))
-    return { success: true }
+export async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem(REFRESH_KEY);
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${API}/refresh.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const data = await res.json();
+    if (!data.success) return false;
+
+    localStorage.setItem(ACCESS_KEY, data.access_token);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data.admin));
+    localStorage.setItem(EXPIRES_KEY, String(Date.now() + data.expires_in * 1000));
+    return true;
+  } catch {
+    return false;
   }
-  return { success: false, message: 'Incorrect username or password.' }
 }
 
 export function logout() {
-  sessionStorage.removeItem(SESSION_KEY)
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(EXPIRES_KEY);
+  // Linisin din yung lumang sessionStorage para sure
+  sessionStorage.removeItem('gco_admin_session');
 }
 
 export function isLoggedIn() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    return raw !== null
+    return localStorage.getItem(SESSION_KEY) !== null;
   } catch {
-    return false
+    return false;
   }
 }
 
 export function getSession() {
   try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    return raw ? JSON.parse(raw) : null
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
-    return null
+    return null;
+  }
+}
+
+// Alias para kung may ibang file na gumagamit ng getAdmin()
+export function getAdmin() {
+  return getSession();
+}
+
+// ============================================================
+// FORGOT / RESET PASSWORD - BAGONG DAGDAG LANG DITO SA BABA
+// ============================================================
+
+export async function requestPasswordReset(username) {
+  try {
+    const res = await fetch(`${API}/forgot-password.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, message: 'Cannot connect to server. Check if XAMPP is running.' };
+  }
+}
+
+export async function resetPassword(token, password) {
+  try {
+    const res = await fetch(`${API}/reset-password.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false, message: 'Cannot connect to server. Check if XAMPP is running.' };
   }
 }
