@@ -16,6 +16,13 @@ const STATUS_STYLES = {
   Booked: 'bg-amber-50 text-amber-700 border-amber-200',
 }
 
+// [ADD - URGENCY] - Badge colors lang
+const URGENCY_STYLES = {
+  Normal: 'bg-gray-100 text-gray-600 border-gray-200',
+  Urgent: 'bg-orange-50 text-orange-700 border-orange-200',
+  Emergency: 'bg-red-50 text-red-700 border-red-200',
+}
+
 export default function AppointmentHistory({ showToast }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
@@ -61,8 +68,6 @@ export default function AppointmentHistory({ showToast }) {
   }
 
   return (
-    // [FIX] Dati: min-h-screen - 100vh mag-isa + 60px Topbar = sumosobra, kaya may extra putol sa baba.
-    // Ngayon: w-full lang - sumasama na sa buong page scroll ng App.jsx.
     <div className="bg-[#f6f8f7] w-full">
       {/* HEADER - CLEAN, NO REDUNDANT CARD */}
       <div className="bg-[#085041] px-6 md:px-10 py-8">
@@ -104,10 +109,16 @@ export default function AppointmentHistory({ showToast }) {
             {filtered.map(item => {
               const apptDate = new Date(item.appointment_date)
               const isCancelled = item.status === 'Cancelled'
+              const urgency = item.urgency_level || 'Normal'
               return (
-                <div key={item.id} className={`bg-white rounded-xl border p-4 md:p-5 flex gap-4 transition-all ${ isCancelled ? 'border-gray-200 opacity-70' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm' }`} >
+                <div
+                  key={item.id}
+                  className={`bg-white rounded-xl border p-4 md:p-5 flex gap-4 transition-all ${
+                    isCancelled ? 'border-gray-200 opacity-70' : urgency === 'Emergency' ? 'border-red-200 hover:shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  }`}
+                >
                   {/* Left: Date Block */}
-                  <div className={`w-[64px] h-[64px] rounded-lg flex flex-col items-center justify-center shrink-0 ${isCancelled ? 'bg-gray-100 text-gray-400' : 'bg-[#E1F5EE] text-[#085041]'}`}>
+                  <div className={`w-[64px] h-[64px] rounded-lg flex flex-col items-center justify-center shrink-0 ${isCancelled ? 'bg-gray-100 text-gray-400' : urgency === 'Emergency' ? 'bg-red-50 text-red-700' : 'bg-[#E1F5EE] text-[#085041]'}`}>
                     <span className="text-[11px] font-bold uppercase tracking-widest">{apptDate.toLocaleDateString('en-US', { month: 'short' })}</span>
                     <span className="text-[20px] font-bold leading-none mt-0.5">{apptDate.getDate()}</span>
                   </div>
@@ -116,7 +127,7 @@ export default function AppointmentHistory({ showToast }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-[13px] font-bold text-gray-900">GCO-{item.id}</p>
                           <span className="text-[11px] text-gray-400">•</span>
                           <p className="text-[12px] text-gray-600 truncate">{item.consultation_hour} • {item.counselor_name}</p>
@@ -126,11 +137,33 @@ export default function AppointmentHistory({ showToast }) {
                         {item.status}
                       </span>
                     </div>
+
+                    {/* [ADD - URGENCY] - Badge lang */}
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${URGENCY_STYLES[urgency] || URGENCY_STYLES.Normal}`}>
+                        {urgency === 'Emergency' ? '🚨 Emergency' : urgency === 'Urgent' ? '⚠️ Urgent' : 'Normal'}
+                      </span>
+                      {urgency === 'Emergency' && <span className="text-[11px] text-red-600 font-medium">Prioritized by GCO</span>}
+                    </div>
+
                     <p className="text-[12px] text-gray-600 mt-2 leading-relaxed bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
                       {item.reason || 'No reason provided'}
                     </p>
+
+                    {/* [ADD - URGENCY] - Emergency contact, pag Emergency lang lalabas */}
+                    {urgency === 'Emergency' && item.emergency_contact_name && (
+                      <div className="mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                        <p className="text-[11px] font-bold text-red-700">Emergency Contact</p>
+                        <p className="text-[11px] text-gray-700 mt-0.5">
+                          {item.emergency_contact_name}
+                          {item.emergency_contact_relation ? ` • ${item.emergency_contact_relation}` : ''}
+                          {item.emergency_contact_no ? ` • ${item.emergency_contact_no}` : ''}
+                        </p>
+                      </div>
+                    )}
+
                     {item.status === 'Pending' || item.status === 'Booked' ? (
-                      <button onClick={() => cancelBooking(item.id)} className="mt-3 text-[11px] font-semibold text-gray-500 hover:text-red-600 transition-colors" >
+                      <button onClick={() => cancelBooking(item.id)} className="mt-3 text-[11px] font-semibold text-gray-500 hover:text-red-600 transition-colors">
                         Cancel appointment →
                       </button>
                     ) : null}
