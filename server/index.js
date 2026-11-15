@@ -33,7 +33,9 @@ app.get('/api/appointments', async (req, res) => {
       result = await db.query('SELECT * FROM appointments ORDER BY appointment_date DESC, id DESC');
     }
     res.json(result.rows);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // GET single
@@ -41,7 +43,9 @@ app.get('/api/appointments/:id', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM appointments WHERE id=$1', [req.params.id]);
     res.json(result.rows[0]);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // DELETE / CANCEL
@@ -49,7 +53,9 @@ app.delete('/api/appointments/:id', async (req, res) => {
   try {
     await db.query('UPDATE appointments SET status=$1 WHERE id=$2', ['Cancelled', req.params.id]);
     res.json({ message: 'Cancelled' });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // ADMIN PUT
@@ -64,7 +70,9 @@ app.put('/api/appointments/:id', async (req, res) => {
     }
     console.log('✅ ADMIN UPDATED:', req.params.id);
     res.json({ message: `Status updated to ${status}` });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // POST new appointment
@@ -74,6 +82,11 @@ app.post('/api/appointments', async (req, res) => {
   const counselor_name = req.body.counselor_name || req.body.counselor;
   const reason = req.body.reason;
   const student_info = req.body.student_info || req.body.student;
+  // [ADD - URGENCY] - bagong fields galing sa BookAppointment.jsx
+  const urgency_level = req.body.urgency_level || 'Normal';
+  const emergency_contact_name = req.body.emergency_contact_name || null;
+  const emergency_contact_relation = req.body.emergency_contact_relation || null;
+  const emergency_contact_no = req.body.emergency_contact_no || null;
 
   if (!appointment_date || !consultation_hour || !counselor_name || !student_info) {
     return res.status(400).json({ message: 'Missing fields - appointment_date cannot be null' });
@@ -100,10 +113,12 @@ app.post('/api/appointments', async (req, res) => {
       return res.status(400).json({ message: `Full na si ${counselor_name} for ${appointment_date} (3 max per day).` });
     }
 
-    const result = await db.query(`INSERT INTO appointments (appointment_date, consultation_hour, counselor_name, reason, student_info, status) VALUES ($1,$2,$3,$4,$5,'Pending') RETURNING id`, [appointment_date, consultation_hour, counselor_name, reason, student_info]);
-    console.log('✅ SAVED:', result.rows[0].id);
-    res.json({ message: 'Booked!', id: result.rows[0].id });
-
+    const result = await db.query(
+      `INSERT INTO appointments (appointment_date, consultation_hour, counselor_name, reason, student_info, status, urgency_level, emergency_contact_name, emergency_contact_relation, emergency_contact_no) VALUES ($1,$2,$3,$4,$5,'Pending',$6,$7,$8,$9) RETURNING id`,
+      [appointment_date, consultation_hour, counselor_name, reason, student_info, urgency_level, emergency_contact_name, emergency_contact_relation, emergency_contact_no]
+    );
+    console.log('✅ SAVED:', result.rows[0].id, 'Urgency:', urgency_level);
+    res.json({ message: 'Booked!', id: result.rows[0].id, student_info, urgency_level });
   } catch (err) {
     console.error('❌ INSERT ERROR:', err.message);
     return res.status(500).json({ message: err.message });
