@@ -8,9 +8,22 @@ app.use(express.json());
 const { Pool } = pg;
 // Gagamitin nya yung DATABASE_URL na nilagay mo sa Render
 const db = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-db.query('SELECT NOW()', (err) => {
+db.query('SELECT NOW()', async (err) => {
   if (err) { console.error('❌ DB FAILED:', err.message); }
-  else { console.log('✅ Postgres Connected - gco_portal OK'); }
+  else {
+    console.log('✅ Postgres Connected - gco_portal OK');
+    try {
+      // Auto-create admins table kung wala pa — fix sa 42P01 error
+      await db.query(`CREATE TABLE IF NOT EXISTS admins (id SERIAL PRIMARY KEY, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, password TEXT)`);
+      const check = await db.query(`SELECT COUNT(*) as cnt FROM admins`);
+      if (parseInt(check.rows[0].cnt) === 0) {
+        // Default login: admin / GCOAdmin123 - palitan mo agad after makapasok
+        await db.query(`INSERT INTO admins (username, email, password_hash, password) VALUES ($1,$2,$3,$3)`, ['admin', 'leeebisreal616@gmail.com', 'GCOAdmin123']);
+        console.log('✅ Default admin created: admin / GCOAdmin123');
+      }
+      console.log('✅ Admins table ready');
+    } catch (e) { console.error('❌ Admins setup failed:', e.message); }
+  }
 });
 
 // GET all appointments
@@ -98,7 +111,7 @@ app.post('/api/appointments', async (req, res) => {
   } catch (err) { console.error('❌ INSERT ERROR:', err.message); return res.status(500).json({ message: err.message }); }
 });
 
-// ===== ADMIN AUTH - dinagdag, ito yung kulang kaya 404 =====
+// ===== ADMIN AUTH =====
 async function checkPassword(plain, stored) {
   if (!stored) return false;
   if (plain === stored) return true;
@@ -124,7 +137,9 @@ app.post('/api/admin/login', async (req, res) => {
     const admin = r.rows[0];
     const stored = admin.password_hash || admin.password || admin.pass;
     const ok = await checkPassword(password, stored);
-    if (!ok) return res.json({ success: false, message: 'Incorrect username or password.' });
+    // Fallback: check din yung kabilang column kung magkaiba sila
+    const ok2 = !ok && admin.password && admin.password !== stored ? await checkPassword(password, admin.password) : false;
+    if (!ok && !ok2) return res.json({ success: false, message: 'Incorrect username or password.' });
     const token = crypto.randomBytes(24).toString('hex');
     return res.json({ success: true, admin: { id: admin.id, username: admin.username, email: admin.email }, access_token: token, refresh_token: token, expires_in: 3600 });
   } catch (e) { console.error(e); return res.status(500).json({ success: false, message: 'Server error.' }); }
@@ -155,9 +170,7 @@ app.post('/api/admin/reset-password', async (req, res) => {
     const f = await db.query(`SELECT * FROM password_resets WHERE token=$1 AND expires_at > NOW() LIMIT 1`, [token]);
     if (f.rows.length === 0) return res.json({ success: false, message: 'Link expired or invalid.' });
     const hash = await hashPassword(password);
-    // Try password_hash column first, fallback to password
-    try { await db.query(`UPDATE admins SET password_hash=$1 WHERE id=$2`, [hash, f.rows[0].admin_id]); }
-    catch { await db.query(`UPDATE admins SET password=$1 WHERE id=$2`, [hash, f.rows[0].admin_id]); }
+    await db.query(`UPDATE admins SET password_hash=$1, password=$1 WHERE id=$2`, [hash, f.rows[0].admin_id]);
     await db.query(`DELETE FROM password_resets WHERE token=$1`, [token]);
     return res.json({ success: true, message: 'Password updated. You can now login.' });
   } catch (e) { console.error('reset-password error', e); return res.status(500).json({ success: false, message: 'Server error.' }); }
