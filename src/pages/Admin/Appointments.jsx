@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const BASE = 'http://localhost/gco-api'
+// [STEP 6 FIX] - Dati: http://localhost/gco-api - hindi gagana sa Vercel
+// Ngayon: Render backend, same sa Student
+const BASE = import.meta.env.VITE_API_URL || 'https://gco-portal-backend.onrender.com'
 const CONCERN_TYPES = ['Academic', 'Psychological', 'Personal-Social-Emotional', 'Career']
 
 const formatCourse = (course, year) => {
@@ -13,6 +15,8 @@ const formatCourse = (course, year) => {
 const formatTime = (t) => {
   const s = String(t || '').trim()
   if (!s || s === '00:00:00' || s === '00:00') return ''
+  // Kung galing sa Render: "7AM-8AM" na, ibalik na lang as is
+  if (s.includes('AM') || s.includes('PM')) return s
   const parts = s.split(':')
   let h = parseInt(parts[0], 10)
   const m = parts[1] || '00'
@@ -37,6 +41,7 @@ function Badge({ status }) {
     Approved: 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]',
     Completed: 'bg-gray-100 text-gray-600 border-gray-200',
     Declined: 'bg-red-50 text-red-700 border-red-200',
+    Cancelled: 'bg-gray-100 text-gray-500 border-gray-200',
   }
   return <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${map[status] || 'bg-gray-100 text-gray-500 border-gray-200'}`}>{status}</span>
 }
@@ -84,6 +89,9 @@ function ConfirmArchiveModal({ title, message, confirmLabel, isRestore, onCancel
 
 export default function AppointmentsManagement() {
   const [appointments, setAppointments] = useState([])
+  const [archivedIds, setArchivedIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('gco_archived_ids') || '[]') } catch { return [] }
+  })
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -95,37 +103,40 @@ export default function AppointmentsManagement() {
   const [archiveTarget, setArchiveTarget] = useState(null)
   const [pageError, setPageError] = useState('')
 
-  const fetchLive = useCallback(async (archived = false) => {
+  // [STEP 6 FIX] - Render /api/appointments na, hindi na PHP
+  const fetchLive = useCallback(async () => {
     setLoading(true)
     setPageError('')
     try {
-      const res = await fetch(`${BASE}/appointments/get_appointments.php?archived=${archived ? 1 : 0}&all=1`)
+      const res = await fetch(`${BASE}/api/appointments`)
       const data = await res.json()
       const list = Array.isArray(data) ? data : data.data || data.appointments || []
       const normalized = list.map((a) => {
         const statusRaw = a.status || 'Pending'
-        const normalizedStatus = statusRaw.toLowerCase() === 'approved' ? 'Approved' : statusRaw.toLowerCase() === 'declined' ? 'Declined' : statusRaw.toLowerCase() === 'completed' ? 'Completed' : 'Pending'
+        const normalizedStatus = statusRaw.toLowerCase() === 'approved' ? 'Approved' : statusRaw.toLowerCase() === 'declined' ? 'Declined' : statusRaw.toLowerCase() === 'completed' ? 'Completed' : statusRaw.toLowerCase() === 'cancelled' ? 'Cancelled' : 'Pending'
         const urgencyRaw = (a.urgency_level || a.urgency || a.priority || 'Normal').trim()
         const urgency = urgencyRaw.toLowerCase().includes('emerg') ? 'Emergency' : urgencyRaw.toLowerCase().includes('urgent') ? 'Urgent' : 'Normal'
+        // Student info galing sa Render: "Aaron Valencia - 202311325 - BSIT 4th Year"
+        const parts = String(a.student_info || '').split(' - ')
+        const namePart = parts[0] || a.student_name || a.name || `Student ${a.student_id || ''}`
         return {
-          id: a.appointment_id || a.id,
-          name: a.student_name || a.name || `Student ${a.student_id || a.studentId}`,
-          studentId: a.student_id || a.studentId,
-          course: a.course || a.courseYear || '',
+          id: a.id,
+          name: namePart,
+          studentId: a.student_id || parts[1] || '',
+          course: parts[2] || a.course || '',
           year: a.year || a.year_level || '',
           concern: a.concern || a.reason || a.purpose || 'Academic',
           reason: a.reason || a.description || a.details || '',
           date: a.appointment_date ? new Date(a.appointment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : a.date || '',
-          time: a.appointment_time || a.time || '',
+          time: a.consultation_hour || a.appointment_time || a.time || '',
+          counselor: a.counselor_name || '',
           status: normalizedStatus,
           urgency,
-          // [ADD] - Emergency contact, galing sa DB
-          emergency_contact_name: a.emergency_contact_name || a.emergencyName || '',
-          emergency_contact_relation: a.emergency_contact_relation || a.emergencyRel || a.emergency_relation || '',
-          emergency_contact_no: a.emergency_contact_no || a.emergencyNo || a.emergency_contact || '',
+          emergency_contact_name: a.emergency_contact_name || '',
+          emergency_contact_relation: a.emergency_contact_relation || '',
+          emergency_contact_no: a.emergency_contact_no || '',
         }
       })
-      // [ADD] - Emergency lagi sa taas
       normalized.sort((a, b) => {
         const rank = (u) => u === 'Emergency' ? 0 : u === 'Urgent' ? 1 : 2
         return rank(a.urgency) - rank(b.urgency)
@@ -133,14 +144,15 @@ export default function AppointmentsManagement() {
       setAppointments(normalized)
     } catch (e) {
       setAppointments([])
+      setPageError('Failed to load appointments: ' + e.message)
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { fetchLive(false) }, [fetchLive])
+  useEffect(() => { fetchLive() }, [fetchLive])
 
-  const handleToggleArchived = (val) => { setShowArchived(val); setSelected(null); fetchLive(val) }
+  const handleToggleArchived = (val) => { setShowArchived(val); setSelected(null) }
 
   const handleArchive = (id, mode) => {
     const target = appointments.find(a => String(a.id) === String(id))
@@ -148,28 +160,42 @@ export default function AppointmentsManagement() {
     setArchiveTarget({ ...target, mode })
   }
 
+  // [STEP 6 FIX] - Archive = local lang muna (localStorage), hindi buburahin sa DB
   const confirmArchive = async () => {
     if (!archiveTarget) return
     const { id, mode } = archiveTarget
-    try {
-      const res = await fetch(`${BASE}/appointments/archive_appointment.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, appointment_id: id, action: mode }) })
-      const data = await res.json()
-      if (data.success === false) throw new Error(data.message || 'Archive failed')
-      setArchiveTarget(null); fetchLive(showArchived)
-    } catch (e) { setArchiveTarget(null); setPageError('Failed to update appointment: ' + e.message) }
+    let next = [...archivedIds]
+    if (mode === 'archive') {
+      if (!next.includes(String(id))) next.push(String(id))
+    } else {
+      next = next.filter(x => String(x) !== String(id))
+    }
+    setArchivedIds(next)
+    localStorage.setItem('gco_archived_ids', JSON.stringify(next))
+    setArchiveTarget(null)
   }
 
+  // [STEP 6 FIX] - Render PUT /api/appointments/:id
   const applyStatusChange = async () => {
     if (!confirmAction) return
     try {
-      const res = await fetch(`${BASE}/appointments/update_status.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appointment_id: confirmAction.id, id: confirmAction.id, status: confirmAction.action }) })
+      const res = await fetch(`${BASE}/api/appointments/${confirmAction.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: confirmAction.action })
+      })
       const data = await res.json()
-      if (data.success === false) throw new Error(data.message || 'Status update failed')
-      setConfirmAction(null); setSelected(null); fetchLive(showArchived)
+      if (!res.ok) throw new Error(data.message || 'Status update failed')
+      setConfirmAction(null); setSelected(null); fetchLive()
     } catch (err) { setConfirmAction(null); setPageError('Failed to update status: ' + err.message) }
   }
 
-  const filtered = appointments.filter(a => {
+  const visibleAppointments = appointments.filter(a => {
+    const isArchived = archivedIds.includes(String(a.id))
+    return showArchived ? isArchived : !isArchived
+  })
+
+  const filtered = visibleAppointments.filter(a => {
     const matchStatus = filter === 'all' || a.status === filter
     const matchSearch = (a.name + ' ' + a.studentId + ' ' + a.concern).toLowerCase().includes(search.toLowerCase())
     const matchUrgency = urgencyFilter === 'All' || a.urgency === urgencyFilter
@@ -177,10 +203,10 @@ export default function AppointmentsManagement() {
     return matchStatus && matchSearch && matchUrgency && matchConcern
   })
 
-  const stats = { total: appointments.length, pending: appointments.filter(a => a.status === 'Pending').length, approved: appointments.filter(a => a.status === 'Approved').length }
-  const archivedCount = showArchived ? appointments.length : 0
-  const emergencyTotal = appointments.filter(a => a.urgency === 'Emergency').length
-  const urgentTotal = appointments.filter(a => a.urgency === 'Urgent').length
+  const stats = { total: visibleAppointments.length, pending: visibleAppointments.filter(a => a.status === 'Pending').length, approved: visibleAppointments.filter(a => a.status === 'Approved').length }
+  const archivedCount = appointments.filter(a => archivedIds.includes(String(a.id))).length
+  const emergencyTotal = visibleAppointments.filter(a => a.urgency === 'Emergency').length
+  const urgentTotal = visibleAppointments.filter(a => a.urgency === 'Urgent').length
   const filteredActive = filtered.filter(a => a.status !== 'Completed').length
 
   if (loading) return <div className="p-6 text-[13px] text-gray-400">Loading appointments...</div>
@@ -190,9 +216,9 @@ export default function AppointmentsManagement() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-extrabold text-gray-900 tracking-tight leading-tight">Appointments</h1>
-          <p className="text-[12.5px] text-gray-500 mt-0.5">{showArchived ? `${appointments.length} archived` : `${filteredActive} active • ${stats.pending} pending`}</p>
+          <p className="text-[12.5px] text-gray-500 mt-0.5">{showArchived ? `${visibleAppointments.length} archived` : `${filteredActive} active • ${stats.pending} pending`}</p>
         </div>
-        <button onClick={() => fetchLive(showArchived)} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
+        <button onClick={() => fetchLive()} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -212,7 +238,7 @@ export default function AppointmentsManagement() {
           <span className="hidden sm:block w-px h-5 bg-gray-200 mx-1" />
           <div className="flex flex-wrap gap-1.5">
             {['all', 'Pending', 'Approved', 'Completed'].map((f) => (
-              <button key={f} onClick={() => setFilter(f)} className={`text-[12px] font-medium px-3.5 py-1.5 rounded-full border transition ${filter === f ? 'bg-[#085041] text-white border-[#085041]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>{f === 'all' ? `All (${appointments.length})` : f}</button>
+              <button key={f} onClick={() => setFilter(f)} className={`text-[12px] font-medium px-3.5 py-1.5 rounded-full border transition ${filter === f ? 'bg-[#085041] text-white border-[#085041]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}>{f === 'all' ? `All (${visibleAppointments.length})` : f}</button>
             ))}
           </div>
           <div className="ml-auto flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-3.5 pr-2 py-1.5 w-full sm:w-[220px]">
@@ -265,10 +291,10 @@ export default function AppointmentsManagement() {
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between"><span className="text-gray-400 text-[12px]">Course</span><span className="font-medium">{formatCourse(selected.course, selected.year)}</span></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Concern</span><ConcernBadge concern={selected.concern} /></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between"><span className="text-gray-400 text-[12px]">Schedule</span><span className="font-medium text-right">{formatSchedule(selected.date, selected.time)}</span></div>
+              <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Counselor</span><span className="font-medium">{selected.counselor || 'To be assigned'}</span></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Urgency</span><UrgencyBadge urgency={selected.urgency} /></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Status</span><Badge status={selected.status} /></div>
               {selected.reason && <div className="bg-gray-50 rounded-xl p-3"><p className="text-gray-400 text-[12px] mb-1">Reason</p><p className="text-gray-700 leading-relaxed">{selected.reason}</p></div>}
-              {/* [ADD] - Emergency Contact box, pag may laman lang lalabas */}
               {(selected.emergency_contact_name || selected.emergency_contact_no) && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3">
                   <p className="text-red-700 text-[12px] font-bold">🚨 Emergency Contact</p>
@@ -292,4 +318,8 @@ export default function AppointmentsManagement() {
       )}
 
       {archiveTarget && (
-        <ConfirmArchiveModal title={archiveTarget.mode === 'restore' ? 'Restore Appointment?' : 'Archive Appointment?'} message={archiveTarget.mode === 'restore' ? `Restore the appointment for ${archiveTarget.name}? It will return to Active and be included in reports.` : `Archive the appointment for
+        <ConfirmArchiveModal title={archiveTarget.mode === 'restore' ? 'Restore Appointment?' : 'Archive Appointment?'} message={archiveTarget.mode === 'restore' ? `Restore the appointment for ${archiveTarget.name}? It will return to Active and be included in reports.` : `Archive the appointment for ${archiveTarget.name}? It will be moved to Archived and excluded from reports.`} confirmLabel={archiveTarget.mode === 'restore' ? 'Restore' : 'Archive'} isRestore={archiveTarget.mode === 'restore'} onCancel={() => setArchiveTarget(null)} onConfirm={confirmArchive} />
+      )}
+    </div>
+  )
+}
