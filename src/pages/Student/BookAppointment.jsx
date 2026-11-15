@@ -34,10 +34,8 @@ export default function BookAppointment() {
     }
   }
 
-  const counselors = [
-    { name: "Jervin D. Quicho", role: "GCO Head - Imus", initial: "JQ" },
-    { name: "Hazel Grace B. Malayo", role: "GCO Staff - Imus", initial: "HM" }
-  ]
+  // [BLANK MUNA] - Walang counselor names. Add na lang tayo pag tapos na lahat.
+  const counselors = []
 
   const allSlots = [
     { label: "7AM-8AM", hour24: 7 },
@@ -50,47 +48,17 @@ export default function BookAppointment() {
     { label: "3PM-4PM", hour24: 15 },
   ]
 
-  const showNoticeModal = (msg, type = 'error') => {
-    setNoticeMsg(msg); setNoticeType(type); setShowNotice(true)
-  }
-
-  const isWeekend = (dateStr) => {
-    if (!dateStr) return false;
-    const d = new Date(dateStr);
-    return d.getDay() === 0 || d.getDay() === 6
-  }
-
-  const getAvailableSlots = () => {
-    if (!selectedDate || isWeekend(selectedDate)) return [];
-    if (selectedDate !== new Date().toISOString().split('T')[0]) return allSlots;
-    return allSlots.filter(s => s.hour24 > new Date().getHours())
-  }
-
-  const getNextWeekdays = () => {
-    const days = [];
-    let d = new Date();
-    while (days.length < 10) {
-      if (d.getDay() !== 0 && d.getDay() !== 6) days.push(new Date(d));
-      d.setDate(d.getDate() + 1)
-    }
-    return days
-  }
+  const showNoticeModal = (msg, type = 'error') => { setNoticeMsg(msg); setNoticeType(type); setShowNotice(true) }
+  const isWeekend = (dateStr) => { if (!dateStr) return false; const d = new Date(dateStr); return d.getDay() === 0 || d.getDay() === 6 }
+  const getAvailableSlots = () => { if (!selectedDate || isWeekend(selectedDate)) return []; if (selectedDate !== new Date().toISOString().split('T')[0]) return allSlots; return allSlots.filter(s => s.hour24 > new Date().getHours()) }
+  const getNextWeekdays = () => { const days = []; let d = new Date(); while (days.length < 10) { if (d.getDay() !== 0 && d.getDay() !== 6) days.push(new Date(d)); d.setDate(d.getDate() + 1) } return days }
 
   const handleBook = async () => {
-    if (!selectedDate || !selectedTime) {
-      showNoticeModal("Select date and time"); return
-    }
-    if (!reason.trim() || !emergencyName || !emergencyNo) {
-      showNoticeModal("Complete required fields"); return
-    }
-    if (!consent1 || !consent2) {
-      showNoticeModal("Agree to consent statements"); return
-    }
+    if (!selectedDate || !selectedTime) { showNoticeModal("Select date and time"); return }
+    if (!reason.trim() || !emergencyName || !emergencyNo) { showNoticeModal("Complete required fields"); return }
+    if (!consent1 || !consent2) { showNoticeModal("Agree to consent statements"); return }
     // [ADD - URGENCY] - check lang kung Emergency pero hindi pa nag-agree sa disclaimer
-    if (urgency === 'Emergency' && !emergencyAgreed) {
-      showNoticeModal("Please read and agree to the Emergency Disclaimer first.");
-      setShowEmergencyModal(true); return
-    }
+    if (urgency === 'Emergency' && !emergencyAgreed) { showNoticeModal("Please read and agree to the Emergency Disclaimer first."); setShowEmergencyModal(true); return }
     setLoading(true)
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('student') || localStorage.getItem('gco_user') || '{}')
@@ -100,7 +68,6 @@ export default function BookAppointment() {
       const course = storedUser.course || 'BSIT'
       const yearLevel = storedUser.year_level || storedUser.year || '4th Year'
       const studentInfo = `${firstName} ${lastName} - ${realStudentId} - ${course} ${yearLevel}`
-
       const res = await fetch(`${API_BASE}/api/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,7 +82,8 @@ export default function BookAppointment() {
           appointment_date: selectedDate,
           preferred_time: selectedTime,
           consultation_hour: selectedTime,
-          counselor_name: counselors[selectedCounselor].name,
+          // [BLANK MUNA] - pag walang counselor, "To be assigned" muna
+          counselor_name: counselors[selectedCounselor]?.name || 'To be assigned',
           reason: reason,
           status: 'Pending',
           // [ADD - URGENCY] - isa lang dinagdag sa body
@@ -132,19 +100,13 @@ export default function BookAppointment() {
       setEmergencyName(''); setEmergencyRel(''); setEmergencyNo('')
       // [ADD - URGENCY] - reset lang ng urgency
       setUrgency('Normal'); setEmergencyAgreed(false)
-    } catch (err) {
-      showNoticeModal(err.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { showNoticeModal(err.message) } finally { setLoading(false) }
   }
 
   const availableSlots = getAvailableSlots()
   const weekdays = getNextWeekdays()
 
   return (
-    // [FIX] Dati: min-h-[calc(100vh-64px)] - may sariling height, kaya nahahati yung scroll.
-    // Ngayon: w-full lang - sumasama na sa buong page scroll ng App.jsx (flex-col + sticky Topbar).
     <div className="bg-[#f6f8f7] w-full">
       <div className="bg-[#085041] px-6 md:px-10 py-8 flex flex-col lg:flex-row gap-6 justify-between">
         <div>
@@ -156,14 +118,21 @@ export default function BookAppointment() {
       <div className="px-4 md:px-10 py-6 max-w-[760px] mx-auto">
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <p className="text-[12px] font-semibold">Select Counselor</p>
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            {counselors.map((c, i) => (
-              <button key={i} onClick={() => setSelectedCounselor(i)} className={`p-4 rounded-xl border flex gap-3 items-center text-left transition-colors ${selectedCounselor === i ? 'border-[#085041] bg-[#E8F5F1]' : 'border-gray-200'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold ${selectedCounselor === i ? 'bg-[#085041] text-white' : 'bg-gray-100'}`}>{c.initial}</div>
-                <div><p className="text-[12px] font-medium">{c.name}</p><p className="text-[10px] text-gray-500">{c.role}</p></div>
-              </button>
-            ))}
-          </div>
+          {counselors.length === 0 ? (
+            <div className="mt-3 p-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 text-center">
+              <p className="text-[12px] text-gray-500">No counselor assigned yet. Your request will be assigned by GCO.</p>
+              <p className="text-[11px] text-gray-400 mt-1">Counselor list will be added later.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              {counselors.map((c, i) => (
+                <button key={i} onClick={() => setSelectedCounselor(i)} className={`p-4 rounded-xl border flex gap-3 items-center text-left transition-colors ${selectedCounselor === i ? 'border-[#085041] bg-[#E8F5F1]' : 'border-gray-200'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold ${selectedCounselor === i ? 'bg-[#085041] text-white' : 'bg-gray-100'}`}>{c.initial}</div>
+                  <div><p className="text-[12px] font-medium">{c.name}</p><p className="text-[10px] text-gray-500">{c.role}</p></div>
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="mt-6">
             <label className="text-[12px] font-medium">Date</label>
@@ -183,7 +152,7 @@ export default function BookAppointment() {
 
           <div className="mt-6">
             <label className="text-[12px] font-medium">Time</label>
-            {!selectedDate ? <p className="text-[12px] text-gray-400 mt-2">Select a date first</p> : <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2"> {availableSlots.map((t, i) => (<button key={i} onClick={() => setSelectedTime(t.label)} className={`py-2.5 rounded-xl border text-[12px] font-medium transition-colors ${selectedTime === t.label ? 'bg-[#085041] text-white border-[#085041]' : 'bg-white border-gray-200'}`}>{t.label}</button>))} </div>}
+            {!selectedDate ? <p className="text-[12px] text-gray-400 mt-2">Select a date first</p> : <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">{availableSlots.map((t, i) => (<button key={i} onClick={() => setSelectedTime(t.label)} className={`py-2.5 rounded-xl border text-[12px] font-medium transition-colors ${selectedTime === t.label ? 'bg-[#085041] text-white border-[#085041]' : 'bg-white border-gray-200'}`}>{t.label}</button>))}</div>}
           </div>
 
           <div className="mt-6">
@@ -218,8 +187,6 @@ export default function BookAppointment() {
           </div>
 
           <button onClick={handleBook} disabled={loading} className="w-full mt-6 bg-[#085041] text-white font-medium py-3 rounded-full text-[13px]">{loading ? 'Booking...' : urgency === 'Emergency' ? '🚨 Send Emergency Request' : 'Confirm Booking'}</button>
-
-          {/* [ADD - URGENCY] - Limitations footer lang */}
           <p className="text-[10px] text-gray-400 text-center leading-relaxed mt-3">*LIMITATION: If life and death situation, please contact nearest hospital / NCMH Crisis Hotline 1553 / 911 immediately. This portal is monitored only during school hours (Mon-Thurs, 7AM-4PM).</p>
         </div>
       </div>
