@@ -10,8 +10,6 @@ const formatCourse = (course, year) => {
   return `${c} ${y}`.replace('4rd', '4th').trim()
 }
 
-// Bagong helper — para hindi na lumabas yung "at" na walang oras
-// At para yung "14:00:00" sa DB, magiging "2:00 PM"
 const formatTime = (t) => {
   const s = String(t || '').trim()
   if (!s || s === '00:00:00' || s === '00:00') return ''
@@ -50,7 +48,7 @@ function UrgencyBadge({ urgency }) {
     Urgent: 'bg-orange-50 text-orange-700 border-orange-200',
     Normal: 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]',
   }
-  return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${map[u] || map.Normal}`}>{u}</span>
+  return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${map[u] || map.Normal}`}>{u === 'Emergency' ? '🚨 Emergency' : u}</span>
 }
 
 function ConcernBadge({ concern }) {
@@ -69,8 +67,6 @@ const Icon = {
   search: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z" strokeLinecap="round" strokeLinejoin="round" /></svg>,
 }
 
-// Custom Modal - pamalit sa window.confirm() at window.alert()
-// FIX SA TAAS: z-[100] para matakpan pati yung header / linya sa taas. Blur, same lang — hindi ko ginalaw.
 function ConfirmArchiveModal({ title, message, confirmLabel, isRestore, onCancel, onConfirm }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/40 backdrop-blur-[2px]" onClick={(e) => e.target === e.currentTarget && onCancel()}>
@@ -123,24 +119,32 @@ export default function AppointmentsManagement() {
           time: a.appointment_time || a.time || '',
           status: normalizedStatus,
           urgency,
+          // [ADD] - Emergency contact, galing sa DB
+          emergency_contact_name: a.emergency_contact_name || a.emergencyName || '',
+          emergency_contact_relation: a.emergency_contact_relation || a.emergencyRel || a.emergency_relation || '',
+          emergency_contact_no: a.emergency_contact_no || a.emergencyNo || a.emergency_contact || '',
         }
       })
+      // [ADD] - Emergency lagi sa taas
+      normalized.sort((a, b) => {
+        const rank = (u) => u === 'Emergency' ? 0 : u === 'Urgent' ? 1 : 2
+        return rank(a.urgency) - rank(b.urgency)
+      })
       setAppointments(normalized)
-    } catch (e) { setAppointments([]) } finally { setLoading(false) }
+    } catch (e) {
+      setAppointments([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { fetchLive(false) }, [fetchLive])
 
-  const handleToggleArchived = (val) => {
-    setShowArchived(val)
-    setSelected(null)
-    fetchLive(val)
-  }
+  const handleToggleArchived = (val) => { setShowArchived(val); setSelected(null); fetchLive(val) }
 
   const handleArchive = (id, mode) => {
     const target = appointments.find(a => String(a.id) === String(id))
-    if (!target) return
-    setSelected(null)
+    if (!target) return setSelected(null)
     setArchiveTarget({ ...target, mode })
   }
 
@@ -148,38 +152,21 @@ export default function AppointmentsManagement() {
     if (!archiveTarget) return
     const { id, mode } = archiveTarget
     try {
-      const res = await fetch(`${BASE}/appointments/archive_appointment.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, appointment_id: id, action: mode })
-      })
+      const res = await fetch(`${BASE}/appointments/archive_appointment.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, appointment_id: id, action: mode }) })
       const data = await res.json()
       if (data.success === false) throw new Error(data.message || 'Archive failed')
-      setArchiveTarget(null)
-      fetchLive(showArchived)
-    } catch (e) {
-      setArchiveTarget(null)
-      setPageError('Failed to update appointment: ' + e.message)
-    }
+      setArchiveTarget(null); fetchLive(showArchived)
+    } catch (e) { setArchiveTarget(null); setPageError('Failed to update appointment: ' + e.message) }
   }
 
   const applyStatusChange = async () => {
     if (!confirmAction) return
     try {
-      const res = await fetch(`${BASE}/appointments/update_status.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointment_id: confirmAction.id, id: confirmAction.id, status: confirmAction.action })
-      })
+      const res = await fetch(`${BASE}/appointments/update_status.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appointment_id: confirmAction.id, id: confirmAction.id, status: confirmAction.action }) })
       const data = await res.json()
       if (data.success === false) throw new Error(data.message || 'Status update failed')
-      setConfirmAction(null)
-      setSelected(null)
-      fetchLive(showArchived)
-    } catch (err) {
-      setConfirmAction(null)
-      setPageError('Failed to update status: ' + err.message)
-    }
+      setConfirmAction(null); setSelected(null); fetchLive(showArchived)
+    } catch (err) { setConfirmAction(null); setPageError('Failed to update status: ' + err.message) }
   }
 
   const filtered = appointments.filter(a => {
@@ -190,12 +177,7 @@ export default function AppointmentsManagement() {
     return matchStatus && matchSearch && matchUrgency && matchConcern
   })
 
-  const stats = {
-    total: appointments.length,
-    pending: appointments.filter(a => a.status === 'Pending').length,
-    approved: appointments.filter(a => a.status === 'Approved').length,
-  }
-
+  const stats = { total: appointments.length, pending: appointments.filter(a => a.status === 'Pending').length, approved: appointments.filter(a => a.status === 'Approved').length }
   const archivedCount = showArchived ? appointments.length : 0
   const emergencyTotal = appointments.filter(a => a.urgency === 'Emergency').length
   const urgentTotal = appointments.filter(a => a.urgency === 'Urgent').length
@@ -282,11 +264,21 @@ export default function AppointmentsManagement() {
             <div className="space-y-3 text-[13px]">
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between"><span className="text-gray-400 text-[12px]">Course</span><span className="font-medium">{formatCourse(selected.course, selected.year)}</span></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Concern</span><ConcernBadge concern={selected.concern} /></div>
-              {/* FIX SA SCHEDULE: hindi na "{date} at {time}" — may condition na */}
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between"><span className="text-gray-400 text-[12px]">Schedule</span><span className="font-medium text-right">{formatSchedule(selected.date, selected.time)}</span></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Urgency</span><UrgencyBadge urgency={selected.urgency} /></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Status</span><Badge status={selected.status} /></div>
               {selected.reason && <div className="bg-gray-50 rounded-xl p-3"><p className="text-gray-400 text-[12px] mb-1">Reason</p><p className="text-gray-700 leading-relaxed">{selected.reason}</p></div>}
+              {/* [ADD] - Emergency Contact box, pag may laman lang lalabas */}
+              {(selected.emergency_contact_name || selected.emergency_contact_no) && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  <p className="text-red-700 text-[12px] font-bold">🚨 Emergency Contact</p>
+                  <p className="text-gray-700 text-[12px] mt-1 leading-relaxed">
+                    {selected.emergency_contact_name || 'N/A'}
+                    {selected.emergency_contact_relation ? ` • ${selected.emergency_contact_relation}` : ''}
+                    {selected.emergency_contact_no ? <><br />📞 {selected.emergency_contact_no}</> : ''}
+                  </p>
+                </div>
+              )}
               {selected.urgency === 'Emergency' && (<p className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-[11.5px] font-medium leading-relaxed">Emergency case. Prioritize. If life-threatening, advise student to call NCMH 1553 / 911.</p>)}
             </div>
             {selected.status === 'Pending' && !showArchived && (<div className="flex gap-2 mt-5"><button onClick={() => setConfirmAction({ id: selected.id, action: 'Approved' })} className="flex-1 bg-[#085041] text-white text-[13px] font-semibold py-2.5 rounded-full hover:bg-[#06382D]">Approve</button><button onClick={() => setConfirmAction({ id: selected.id, action: 'Declined' })} className="flex-1 border border-gray-200 text-[13px] font-medium py-2.5 rounded-full hover:bg-gray-50">Decline</button></div>)}
@@ -300,15 +292,4 @@ export default function AppointmentsManagement() {
       )}
 
       {archiveTarget && (
-        <ConfirmArchiveModal
-          title={archiveTarget.mode === 'restore' ? 'Restore Appointment?' : 'Archive Appointment?'}
-          message={archiveTarget.mode === 'restore' ? `Restore the appointment for ${archiveTarget.name}? It will return to Active and be included in reports.` : `Archive the appointment for ${archiveTarget.name}? It will be moved to Archived and excluded from reports.`}
-          confirmLabel={archiveTarget.mode === 'restore' ? 'Restore' : 'Archive'}
-          isRestore={archiveTarget.mode === 'restore'}
-          onCancel={() => setArchiveTarget(null)}
-          onConfirm={confirmArchive}
-        />
-      )}
-    </div>
-  )
-}
+        <ConfirmArchiveModal title={archiveTarget.mode === 'restore' ? 'Restore Appointment?' : 'Archive Appointment?'} message={archiveTarget.mode === 'restore' ? `Restore the appointment for ${archiveTarget.name}? It will return to Active and be included in reports.` : `Archive the appointment for
