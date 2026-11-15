@@ -14,11 +14,11 @@ import InitialAssessment from './pages/Student/InitialAssessment'
 import StudentLogin from './pages/StudentLogin'
 import Register from './pages/Register'
 
-// ADMIN - NASA admin FOLDER - MALIIT NA a, YAN YUNG NASA dir MO
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminLogin from './pages/admin/AdminLogin'
-import AdminForgotPassword from './pages/admin/AdminForgotPassword'
-import AdminResetPassword from './pages/admin/AdminResetPassword'
+// ADMIN - NASA Admin FOLDER - MALAKING A, YAN YUNG NASA dir MO
+import AdminDashboard from './pages/Admin/AdminDashboard'
+import AdminLogin from './pages/Admin/AdminLogin'
+import AdminForgotPassword from './pages/Admin/AdminForgotPassword'
+import AdminResetPassword from './pages/Admin/AdminResetPassword'
 import { isLoggedIn } from './utils/adminAuth'
 
 // Toast Context
