@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 export default function StudentLogin() {
   const [studentId, setStudentId] = useState('')
@@ -47,7 +50,9 @@ export default function StudentLogin() {
       if (data.success) {
         setStep(2); setSuccessMsg(data.message); setOtp(['', '', '', '', '', '']); startCountdown()
         setTimeout(() => inputRefs.current[0]?.focus(), 100)
-      } else { setError(data.message || 'Student ID not found.') }
+      } else {
+        setError(data.message || 'Student ID not found.')
+      }
     } catch (err) { console.log(err); setError('API Error: ' + err.message) }
     setLoading(false)
   }
@@ -124,17 +129,14 @@ export default function StudentLogin() {
               <p className="text-[12px] text-gray-500 mb-5">We'll send a 6-digit code to your CvSU email.</p>
               <form onSubmit={handleSendOtp}>
                 <label className="block text-[12px] font-semibold tracking-wide text-gray-700 mb-2">STUDENT ID</label>
-                <input type="text" inputMode="numeric" placeholder="Enter your Student ID" value={studentId}
-                  onChange={(e) => { setStudentId(e.target.value.replace(/\D/g, '').slice(0, 9)); setError('') }}
-                  className="w-full h-[48px] px-4 rounded-xl border border-gray-300 bg-white text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#085041] focus:ring-2 focus:ring-[#085041]/10 transition-colors" />
+                <input type="text" inputMode="numeric" placeholder="Enter your Student ID" value={studentId} onChange={(e) => { setStudentId(e.target.value.replace(/\D/g, '').slice(0, 9)); setError('') }} className="w-full h-[48px] px-4 rounded-xl border border-gray-300 bg-white text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#085041] focus:ring-2 focus:ring-[#085041]/10 transition-colors" />
                 {successMsg && (
                   <p className="text-[12px] text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-3">{successMsg}</p>
                 )}
                 {error && (
                   <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-3">{error}</p>
                 )}
-                <button type="submit" disabled={loading}
-                  className="w-full h-[48px] mt-5 bg-[#085041] hover:bg-[#063a2e] text-white text-[14px] font-semibold rounded-full transition-colors disabled:opacity-50">
+                <button type="submit" disabled={loading} className="w-full h-[48px] mt-5 bg-[#085041] hover:bg-[#063a2e] text-white text-[14px] font-semibold rounded-full transition-colors disabled:opacity-50">
                   {loading ? 'Sending Code...' : 'Send Login Code'}
                 </button>
                 <p className="text-[12px] text-center text-gray-500 mt-4">
@@ -149,9 +151,7 @@ export default function StudentLogin() {
               <form onSubmit={handleVerifyOtp}>
                 <div className="flex gap-2 justify-between" onPaste={handlePaste}>
                   {otp.map((digit, i) => (
-                    <input key={i} ref={(el) => (inputRefs.current[i] = el)} type="text" inputMode="numeric" maxLength={1} value={digit}
-                      onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      className="w-[48px] h-[52px] text-center text-[20px] font-bold rounded-xl border border-gray-300 bg-white text-gray-900 outline-none focus:border-[#085041] focus:ring-2 focus:ring-[#085041]/10 transition-colors" />
+                    <input key={i} ref={(el) => (inputRefs.current[i] = el)} type="text" inputMode="numeric" maxLength={1} value={digit} onChange={(e) => handleOtpChange(i, e.target.value)} onKeyDown={(e) => handleOtpKeyDown(i, e)} className="w-[48px] h-[52px] text-center text-[20px] font-bold rounded-xl border border-gray-300 bg-white text-gray-900 outline-none focus:border-[#085041] focus:ring-2 focus:ring-[#085041]/10 transition-colors" />
                   ))}
                 </div>
                 {successMsg && (
@@ -160,15 +160,12 @@ export default function StudentLogin() {
                 {error && (
                   <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-3">{error}</p>
                 )}
-                <button type="submit" disabled={loading}
-                  className="w-full h-[48px] mt-5 bg-[#085041] hover:bg-[#063a2e] text-white text-[14px] font-semibold rounded-full transition-colors disabled:opacity-50">
+                <button type="submit" disabled={loading} className="w-full h-[48px] mt-5 bg-[#085041] hover:bg-[#063a2e] text-white text-[14px] font-semibold rounded-full transition-colors disabled:opacity-50">
                   {loading ? 'Verifying...' : 'Verify & Enter Portal'}
                 </button>
                 <div className="flex items-center justify-between mt-4">
-                  <button type="button" onClick={() => { setStep(1); setError(''); setSuccessMsg(''); setOtp(['','','','','','']) }}
-                    className="text-[12px] font-semibold text-gray-600 hover:text-gray-900">← Use different ID</button>
-                  <button type="button" onClick={handleResend} disabled={countdown > 0 || loading}
-                    className="text-[12px] font-semibold text-[#085041] hover:text-[#063a2e] disabled:opacity-40 disabled:cursor-not-allowed">
+                  <button type="button" onClick={() => { setStep(1); setError(''); setSuccessMsg(''); setOtp(['','','','','','']) }} className="text-[12px] font-semibold text-gray-600 hover:text-gray-900">← Use different ID</button>
+                  <button type="button" onClick={handleResend} disabled={countdown > 0 || loading} className="text-[12px] font-semibold text-[#085041] hover:text-[#063a2e] disabled:opacity-40 disabled:cursor-not-allowed">
                     {countdown > 0 ? `Resend in ${countdown}s` : 'Resend Code'}
                   </button>
                 </div>

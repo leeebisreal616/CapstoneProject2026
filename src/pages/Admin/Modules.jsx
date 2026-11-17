@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 const catLabel = {
   academic: 'Academic',
@@ -71,85 +74,48 @@ export default function ModulesManagement() {
   useEffect(() => { fetchModules() }, [])
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.description.trim()) {
-      setFormError('Please complete the title and description.')
-      return
-    }
+    if (!form.title.trim() || !form.description.trim()) { setFormError('Please complete the title and description.'); return }
     setFormError('')
     try {
       const endpoint = editing ? `${BASE}/modules/update_module.php` : `${BASE}/modules/create_module.php`
       const payload = editing ? { id: editing.id, ...form } : form
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const result = await res.json()
-      if (result.success === false) {
-        setFormError('Failed to save module: ' + (result.message || 'Please check the server.'))
-        return
-      }
+      if (result.success === false) { setFormError('Failed to save module: ' + (result.message || 'Please check the server.')); return }
       setShowForm(false)
       setEditing(null)
       setForm({ category: 'academic', title: '', description: '', status: 'active' })
       fetchModules()
-    } catch (err) {
-      setFormError('Failed to save module. Please check create_module.php or update_module.php.')
-    }
+    } catch (err) { setFormError('Failed to save module. Please check create_module.php or update_module.php.') }
   }
 
   // NGAYON: hindi na confirm(), bubukas lang ng Modal
-  const handleDelete = (item) => {
-    setConfirmDelete(item)
-  }
-
+  const handleDelete = (item) => { setConfirmDelete(item) }
   const confirmDeleteModule = async () => {
     if (!confirmDelete) return
     try {
-      await fetch(`${BASE}/modules/delete_module.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: confirmDelete.id })
-      })
+      await fetch(`${BASE}/modules/delete_module.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmDelete.id }) })
       setConfirmDelete(null)
       fetchModules()
-    } catch {
-      setConfirmDelete(null)
-      setPageError('Failed to delete module.')
-    }
+    } catch { setConfirmDelete(null); setPageError('Failed to delete module.') }
   }
 
   // NGAYON: may confirm na rin, hindi na biglaang archive
-  const handleArchive = (item) => {
-    setConfirmArchive(item)
-  }
-
+  const handleArchive = (item) => { setConfirmArchive(item) }
   const confirmArchiveModule = async () => {
     if (!confirmArchive) return
     const newStatus = confirmArchive.status === 'archived' ? 'active' : 'archived'
     try {
-      await fetch(`${BASE}/modules/update_module.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: confirmArchive.id, category: confirmArchive.category, title: confirmArchive.title, description: confirmArchive.description, status: newStatus })
-      })
+      await fetch(`${BASE}/modules/update_module.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmArchive.id, category: confirmArchive.category, title: confirmArchive.title, description: confirmArchive.description, status: newStatus }) })
       setConfirmArchive(null)
       fetchModules()
-    } catch {
-      setConfirmArchive(null)
-      setPageError('Failed to update module status.')
-    }
+    } catch { setConfirmArchive(null); setPageError('Failed to update module status.') }
   }
 
   const startEdit = (item) => {
     setEditing(item)
     setFormError('')
-    setForm({
-      category: String(item.category || 'academic').toLowerCase(),
-      title: item.title || '',
-      description: item.description || '',
-      status: String(item.status || 'active').toLowerCase()
-    })
+    setForm({ category: String(item.category || 'academic').toLowerCase(), title: item.title || '', description: item.description || '', status: String(item.status || 'active').toLowerCase() })
     setShowForm(true)
   }
 
@@ -266,25 +232,11 @@ export default function ModulesManagement() {
       )}
 
       {confirmDelete && (
-        <ConfirmModal
-          title="Delete Module?"
-          message={`Delete "${confirmDelete.title}"? It will no longer be visible to students. This cannot be undone.`}
-          confirmLabel="Delete"
-          isDanger={true}
-          onCancel={() => setConfirmDelete(null)}
-          onConfirm={confirmDeleteModule}
-        />
+        <ConfirmModal title="Delete Module?" message={`Delete "${confirmDelete.title}"? It will no longer be visible to students. This cannot be undone.`} confirmLabel="Delete" isDanger={true} onCancel={() => setConfirmDelete(null)} onConfirm={confirmDeleteModule} />
       )}
 
       {confirmArchive && (
-        <ConfirmModal
-          title={confirmArchive.status === 'archived' ? 'Unarchive Module?' : 'Archive Module?'}
-          message={confirmArchive.status === 'archived' ? `Unarchive "${confirmArchive.title}"? It will be visible to students again.` : `Archive "${confirmArchive.title}"? It will be hidden from students.`}
-          confirmLabel={confirmArchive.status === 'archived' ? 'Unarchive' : 'Archive'}
-          isDanger={false}
-          onCancel={() => setConfirmArchive(null)}
-          onConfirm={confirmArchiveModule}
-        />
+        <ConfirmModal title={confirmArchive.status === 'archived' ? 'Unarchive Module?' : 'Archive Module?'} message={confirmArchive.status === 'archived' ? `Unarchive "${confirmArchive.title}"? It will be visible to students again.` : `Archive "${confirmArchive.title}"? It will be hidden from students.`} confirmLabel={confirmArchive.status === 'archived' ? 'Unarchive' : 'Archive'} isDanger={false} onCancel={() => setConfirmArchive(null)} onConfirm={confirmArchiveModule} />
       )}
     </div>
   )

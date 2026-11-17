@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const API = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const API = 'https://gco-api.infinityfreeapp.com'
 
 function Icon({ name, className }) {
   const paths = {
@@ -18,9 +21,7 @@ function Icon({ name, className }) {
   )
 }
 
-function normalizeStatus(v) {
-  return String(v || '').toLowerCase().replace(/_/g, ' ').trim()
-}
+function normalizeStatus(v) { return String(v || '').toLowerCase().replace(/_/g, ' ').trim() }
 
 function normalizeFlag(v) {
   const s = String(v || '').toLowerCase()

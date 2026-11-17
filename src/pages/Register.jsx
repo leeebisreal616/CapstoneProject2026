@@ -1,18 +1,17 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 export default function Register() {
-  const [form, setForm] = useState({
-    student_id: '', first_name: '', last_name: '', middle_initial: '',
-    email: '', course: '', year_level: ''
-  })
+  const [form, setForm] = useState({ student_id: '', first_name: '', last_name: '', middle_initial: '', email: '', course: '', year_level: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [emailTouched, setEmailTouched] = useState(false) // pag ikaw nag-type ng email, stop auto
   const navigate = useNavigate()
-
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
   // LIVE auto-generate: kahit 1 letter pa lang, generate na agad
@@ -23,7 +22,7 @@ export default function Register() {
   const buildEmail = (first, last) => {
     const clean = (s) => s.toLowerCase().trim().replace(/[^a-z ]/g, '').split(' ').filter(Boolean).join('') || ''
     const f = clean(first) // lahat ng first names pinagdikit - Lorenz Justin = lorenzjustin
-    const l = clean(last)  // Dela Cruz = delacruz
+    const l = clean(last) // Dela Cruz = delacruz
     if (!f && !l) return '' // pag binura lahat, burado din email
     if (f && l) return `${f}.${l}@cvsu.edu.ph`
     if (f) return `${f}@cvsu.edu.ph` // First Name pa lang naka-type, live na agad
@@ -33,10 +32,7 @@ export default function Register() {
   // LIVE: kada type / backspace, update agad yung email
   const handleNameChange = (key, value) => {
     const newForm = { ...form, [key]: value }
-    if (emailTouched) {
-      setForm(newForm)
-      return
-    }
+    if (emailTouched) { setForm(newForm); return }
     const autoEmail = buildEmail(
       key === 'first_name' ? value : newForm.first_name,
       key === 'last_name' ? value : newForm.last_name
@@ -60,9 +56,7 @@ export default function Register() {
       } else {
         setError(data.message)
       }
-    } catch (err) {
-      setError('API Error: ' + err.message)
-    }
+    } catch (err) { setError('API Error: ' + err.message) }
     setLoading(false)
   }
 
@@ -85,36 +79,30 @@ export default function Register() {
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-[16px] font-bold text-gray-900 mb-1">Create Student Account</h2>
           <p className="text-[12px] text-gray-500 mb-5">For CvSU Imus students only.</p>
-
           <form onSubmit={handleRegister} className="space-y-3">
             <div>
               <label className="block text-[12px] font-semibold text-gray-700 mb-2">STUDENT ID</label>
-              <input className={inputCls} placeholder="e.g. 202311325" value={form.student_id}
-                onChange={(e) => set('student_id', e.target.value.replace(/\D/g, '').slice(0, 9))} />
+              <input className={inputCls} placeholder="e.g. 202311325" value={form.student_id} onChange={(e) => set('student_id', e.target.value.replace(/\D/g, '').slice(0, 9))} />
             </div>
 
             <div className="flex gap-3">
               <div className="flex-1">
                 <label className="block text-[12px] font-semibold text-gray-700 mb-2">FIRST NAME</label>
-                <input className={inputCls} placeholder="Juan" value={form.first_name}
-                  onChange={(e) => handleNameChange('first_name', e.target.value)} />
+                <input className={inputCls} placeholder="Juan" value={form.first_name} onChange={(e) => handleNameChange('first_name', e.target.value)} />
               </div>
               <div className="w-[105px]">
                 <label className="block text-[12px] font-semibold text-gray-700 mb-2">M.I.</label>
-                <input className={inputCls + " text-center"} placeholder="Optional" maxLength={1} value={form.middle_initial}
-                  onChange={(e) => set('middle_initial', e.target.value.replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase())} />
+                <input className={inputCls + " text-center"} placeholder="Optional" maxLength={1} value={form.middle_initial} onChange={(e) => set('middle_initial', e.target.value.replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase())} />
               </div>
               <div className="flex-1">
                 <label className="block text-[12px] font-semibold text-gray-700 mb-2">LAST NAME</label>
-                <input className={inputCls} placeholder="Dela Cruz" value={form.last_name}
-                  onChange={(e) => handleNameChange('last_name', e.target.value)} />
+                <input className={inputCls} placeholder="Dela Cruz" value={form.last_name} onChange={(e) => handleNameChange('last_name', e.target.value)} />
               </div>
             </div>
 
             <div>
               <label className="block text-[12px] font-semibold text-gray-700 mb-2">CvSU EMAIL</label>
-              <input className={inputCls} placeholder="Auto-filled from your name" type="email" value={form.email}
-                onChange={(e) => { set('email', e.target.value); setEmailTouched(e.target.value !== '') }} />
+              <input className={inputCls} placeholder="Auto-filled from your name" type="email" value={form.email} onChange={(e) => { set('email', e.target.value); setEmailTouched(e.target.value !== '') }} />
               <p className="text-[11px] text-gray-400 mt-1">Live auto-filled from your name. You can still edit it if needed.</p>
             </div>
 
@@ -150,11 +138,9 @@ export default function Register() {
 
             {error && <p className="text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
 
-            <button type="submit" disabled={loading}
-              className="w-full h-[48px] bg-[#085041] hover:bg-[#063a2e] text-white text-[14px] font-semibold rounded-full transition-colors disabled:opacity-50">
+            <button type="submit" disabled={loading} className="w-full h-[48px] bg-[#085041] hover:bg-[#063a2e] text-white text-[14px] font-semibold rounded-full transition-colors disabled:opacity-50">
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
-
             <p className="text-[12px] text-center text-gray-500">
               Already have an account? <Link to="/login" className="font-semibold text-[#085041]">Login</Link>
             </p>

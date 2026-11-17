@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 
-// [STEP 6 FIX] - Dati: http://localhost/gco-api - hindi gagana sa Vercel
-// Ngayon: Render backend, same sa Student
-const BASE = import.meta.env.VITE_API_URL || 'https://gco-portal-backend.onrender.com'
+// LOCAL: D:\xampp\htdocs\gco-api
+const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
+
 const CONCERN_TYPES = ['Academic', 'Psychological', 'Personal-Social-Emotional', 'Career']
 
 const formatCourse = (course, year) => {
@@ -164,29 +166,25 @@ export default function AppointmentsManagement() {
   const confirmArchive = async () => {
     if (!archiveTarget) return
     const { id, mode } = archiveTarget
-    let next = [...archivedIds]
-    if (mode === 'archive') {
-      if (!next.includes(String(id))) next.push(String(id))
-    } else {
-      next = next.filter(x => String(x) !== String(id))
-    }
-    setArchivedIds(next)
-    localStorage.setItem('gco_archived_ids', JSON.stringify(next))
-    setArchiveTarget(null)
+    try {
+      const res = await fetch(`${BASE}/appointments/archive_appointment.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, appointment_id: id, action: mode }) })
+      const data = await res.json()
+      if (data.success === false) throw new Error(data.message || 'Archive failed')
+      setArchiveTarget(null)
+      fetchLive(showArchived)
+    } catch (e) { setArchiveTarget(null); setPageError('Failed to update appointment: ' + e.message) }
   }
 
   // [STEP 6 FIX] - Render PUT /api/appointments/:id
   const applyStatusChange = async () => {
     if (!confirmAction) return
     try {
-      const res = await fetch(`${BASE}/api/appointments/${confirmAction.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: confirmAction.action })
-      })
+      const res = await fetch(`${BASE}/appointments/update_status.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appointment_id: confirmAction.id, id: confirmAction.id, status: confirmAction.action }) })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Status update failed')
-      setConfirmAction(null); setSelected(null); fetchLive()
+      if (data.success === false) throw new Error(data.message || 'Status update failed')
+      setConfirmAction(null)
+      setSelected(null)
+      fetchLive(showArchived)
     } catch (err) { setConfirmAction(null); setPageError('Failed to update status: ' + err.message) }
   }
 

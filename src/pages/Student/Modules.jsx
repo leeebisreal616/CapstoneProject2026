@@ -1,31 +1,25 @@
 import { useState, useEffect } from 'react'
+
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
-const catLabel = {
-  academic: 'Academic',
-  social: 'Personal-Social-Emotional',
-  career: 'Career'
-}
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
+
+const catLabel = { academic: 'Academic', social: 'Personal-Social-Emotional', career: 'Career' }
 const catStyle = {
   academic: 'bg-[#e6f1fb] text-[#185FA5]',
   social: 'bg-[#E1F5EE] text-[#085041]',
   career: 'bg-[#ede9fe] text-[#3C3489]',
 }
 const filters = ['all', 'academic', 'social', 'career']
-const filterLabels = {
-  all: 'All',
-  academic: 'Academic',
-  social: 'Personal-Social-Emotional',
-  career: 'Career'
-}
+const filterLabels = { all: 'All', academic: 'Academic', social: 'Personal-Social-Emotional', career: 'Career' }
 const STORAGE_KEY = 'gco_read_modules'
+
 function loadRead() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY); return raw ? new Set(JSON.parse(raw)) : new Set()
-  } catch { return new Set() }
+  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? new Set(JSON.parse(raw)) : new Set() } catch { return new Set() }
 }
-function saveRead(set) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...set])) } catch {}
-}
+function saveRead(set) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...set])) } catch {} }
+
 // [FIX] Translator: kahit anong form ng category galing DB -> academic / social / career lang
 function normCat(raw) {
   const c = String(raw || 'academic').toLowerCase().trim()
@@ -33,6 +27,7 @@ function normCat(raw) {
   if (c.includes('career')) return 'career'
   return 'academic'
 }
+
 export default function Modules({ showToast }) {
   const [mods, setMods] = useState([])
   const [filter, setFilter] = useState('all')
@@ -40,7 +35,9 @@ export default function Modules({ showToast }) {
   const [openMod, setOpenMod] = useState(null)
   const [read, setRead] = useState(loadRead)
   const [loading, setLoading] = useState(true)
+
   useEffect(() => { saveRead(read) }, [read])
+
   useEffect(() => {
     const fetchMods = async () => {
       try {
@@ -67,17 +64,21 @@ export default function Modules({ showToast }) {
     }
     fetchMods()
   }, [])
+
   // [FIX] Safe search - hindi na mag-crash pag blanko title/desc
   const q = search.toLowerCase()
   const filtered = mods
     .map((m, i) => ({ ...m, gi: i + 1 }))
     .filter(m => filter === 'all' || m.c === filter)
     .filter(m => (m.t || '').toLowerCase().includes(q) || (m.d || '').toLowerCase().includes(q))
+
   const markRead = (idx) => {
     setRead(prev => { const next = new Set(prev); next.add(idx); return next })
     showToast?.('✅ Module marked as read!')
   }
+
   if (loading) return <div className="p-10 text-center text-[13px] text-gray-400 w-full">Loading modules from MySQL...</div>
+
   if (openMod !== null) {
     const m = mods[openMod]
     if (!m) return null
@@ -113,6 +114,7 @@ export default function Modules({ showToast }) {
       </div>
     )
   }
+
   const readCount = [...read].filter(i => i < mods.length).length
   return (
     // [FIX] Dati: min-h-[calc(100vh-64px)] - may sariling height, kaya nahahati yung scroll sa list view.

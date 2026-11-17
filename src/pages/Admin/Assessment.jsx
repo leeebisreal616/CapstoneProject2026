@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 function FlagBadge({ flag }) {
   const map = {
@@ -52,7 +55,6 @@ export default function AssessmentResults() {
       const rawData = Array.isArray(res) ? res : res.data || res.result || []
       const studentsList = Array.isArray(studentsRes) ? studentsRes : studentsRes.data || studentsRes.result || studentsRes.students || []
       const nameMap = buildNameMap(studentsList)
-
       const mapped = rawData.map(row => {
         const score = Number(row.score) || 0
         const pct = Math.round((score / 40) * 100)
@@ -159,6 +161,7 @@ export default function AssessmentResults() {
           </table>
         </div>
       </div>
+
       <p className="text-[11px] text-gray-400 text-center">Confidential under RA 10173 • Live data from gco-api</p>
     </div>
   )

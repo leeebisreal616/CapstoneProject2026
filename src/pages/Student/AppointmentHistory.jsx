@@ -1,13 +1,7 @@
 import { useState, useEffect } from 'react'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'https://gco-portal-backend.onrender.com'
-
-const MOCK_STUDENT = {
-  name: 'Aaron Valencia',
-  id: '202311325',
-  course: 'BSIT 4th Year',
-}
-
+const BASE = 'http://localhost/gco-api'
+// LIVE: https://gco-api.infinityfreeapp.com
+const MOCK_STUDENT = { name: 'Aaron Valencia', id: '202311325', course: 'BSIT 4th Year' }
 const STATUS_STYLES = {
   Pending: 'bg-amber-50 text-amber-700 border-amber-200',
   Approved: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -29,13 +23,44 @@ export default function AppointmentHistory({ showToast }) {
   const [showNotice, setShowNotice] = useState(false)
   const [noticeMsg, setNoticeMsg] = useState('')
   const [filter, setFilter] = useState('All')
-
+  // Kunin yung totoong naka-login, hindi lang MOCK
+  const student = (() => {
+    try {
+      const raw = localStorage.getItem('user') || localStorage.getItem('student')
+      if (raw) {
+        const u = JSON.parse(raw)
+        return {
+          name: u.student_name || u.name || MOCK_STUDENT.name,
+          id: String(u.student_id || u.studentId || u.id || MOCK_STUDENT.id),
+          course: u.course || MOCK_STUDENT.course,
+        }
+      }
+    } catch {}
+    const sid = localStorage.getItem('student_id') || localStorage.getItem('studentId')
+    if (sid) return { ...MOCK_STUDENT, id: String(sid) }
+    return MOCK_STUDENT
+  })()
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/appointments`)
+        setLoading(true)
+        const res = await fetch(`${BASE}/appointments/get_appointments.php?student_id=${student.id}`)
         const data = await res.json()
-        setHistory(data.reverse())
+        const list = Array.isArray(data) ? data : (data.data || [])
+        const mapped = list.map(r => ({
+          id: r.id,
+          student_id: r.student_id,
+          student_name: r.student_name,
+          concern: r.concern,
+          reason: r.concern || r.reason || 'No reason provided',
+          appointment_date: r.appointment_date || r.date,
+          consultation_hour: r.time_slot || r.consultation_hour || '',
+          time_slot: r.time_slot,
+          counselor_name: r.counselor_name || '',
+          status: r.status || 'Pending',
+          urgency_level: r.urgency_level,
+        }))
+        setHistory(mapped.reverse())
       } catch (err) {
         console.error(err)
       } finally {
@@ -43,12 +68,20 @@ export default function AppointmentHistory({ showToast }) {
       }
     }
     fetchHistory()
-  }, [])
+  }, [student.id])
 
+  // [FIX] Dati: local lang, kaya bumabalik sa Pending pag lumipat ng tab.
+  // Ngayon: tinatawag na yung existing mong update_status.php, kaya naka-save na sa DB.
   const cancelBooking = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/api/appointments/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to cancel')
+      const res = await fetch(`${BASE}/appointments/update_status.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id, status: 'Cancelled' })
+      })
+      const result = await res.json()
+      if (!res.ok || result.success === false) throw new Error(result.message || 'Failed to cancel')
+
       setHistory(prev => prev.map(h => h.id === id ? { ...h, status: 'Cancelled' } : h))
       setNoticeMsg("Appointment cancelled successfully.")
       setShowNotice(true)
@@ -59,7 +92,6 @@ export default function AppointmentHistory({ showToast }) {
   }
 
   const filtered = filter === 'All' ? history : history.filter(h => h.status === filter || (filter === 'Pending' && h.status === 'Booked'))
-
   const counts = {
     All: history.length,
     Pending: history.filter(h => h.status === 'Pending' || h.status === 'Booked').length,
@@ -69,37 +101,26 @@ export default function AppointmentHistory({ showToast }) {
 
   return (
     <div className="bg-[#f6f8f7] w-full">
-      {/* HEADER - CLEAN, NO REDUNDANT CARD */}
       <div className="bg-[#085041] px-6 md:px-10 py-8">
         <div className="max-w-[800px] mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h1 className="text-[32px] md:text-[36px] font-bold text-white leading-none tracking-tight">Appointment History</h1>
             <p className="text-[13px] text-white/60 mt-2.5">
-              {MOCK_STUDENT.name} • {MOCK_STUDENT.id} • {MOCK_STUDENT.course}
+              {student.name} • {student.id} • {student.course}
             </p>
           </div>
           <div className="flex gap-1.5 p-1 bg-black/20 rounded-full">
             {['All', 'Pending', 'Approved', 'Cancelled'].map(t => (
-              <button
-                key={t}
-                onClick={() => setFilter(t)}
-                className={`text-[12px] font-semibold px-4 py-1.5 rounded-full transition-all ${
-                  filter === t ? 'bg-white text-[#085041] shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'
-                }`}
-              >
+              <button key={t} onClick={() => setFilter(t)} className={`text-[12px] font-semibold px-4 py-1.5 rounded-full transition-all ${filter === t ? 'bg-white text-[#085041] shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}>
                 {t} {counts[t] > 0 ? `• ${counts[t]}` : ''}
               </button>
             ))}
           </div>
         </div>
       </div>
-
-      {/* CONTENT - COMPACT PROFESSIONAL CARDS */}
       <div className="px-4 md:px-10 py-6 max-w-[760px] mx-auto w-full">
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 h-[120px] animate-pulse" />)}
-          </div>
+          <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 h-[120px] animate-pulse" />)}</div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center">
             <p className="text-[13px] font-medium text-gray-600">No {filter.toLowerCase()} appointments</p>
@@ -111,19 +132,11 @@ export default function AppointmentHistory({ showToast }) {
               const isCancelled = item.status === 'Cancelled'
               const urgency = item.urgency_level || 'Normal'
               return (
-                <div
-                  key={item.id}
-                  className={`bg-white rounded-xl border p-4 md:p-5 flex gap-4 transition-all ${
-                    isCancelled ? 'border-gray-200 opacity-70' : urgency === 'Emergency' ? 'border-red-200 hover:shadow-sm' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                  }`}
-                >
-                  {/* Left: Date Block */}
-                  <div className={`w-[64px] h-[64px] rounded-lg flex flex-col items-center justify-center shrink-0 ${isCancelled ? 'bg-gray-100 text-gray-400' : urgency === 'Emergency' ? 'bg-red-50 text-red-700' : 'bg-[#E1F5EE] text-[#085041]'}`}>
+                <div key={item.id} className={`bg-white rounded-xl border p-4 md:p-5 flex gap-4 transition-all ${isCancelled ? 'border-gray-200 opacity-70' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'}`}>
+                  <div className={`w-[64px] h-[64px] rounded-lg flex flex-col items-center justify-center shrink-0 ${isCancelled ? 'bg-gray-100 text-gray-400' : 'bg-[#E1F5EE] text-[#085041]'}`}>
                     <span className="text-[11px] font-bold uppercase tracking-widest">{apptDate.toLocaleDateString('en-US', { month: 'short' })}</span>
                     <span className="text-[20px] font-bold leading-none mt-0.5">{apptDate.getDate()}</span>
                   </div>
-
-                  {/* Right: Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -133,9 +146,7 @@ export default function AppointmentHistory({ showToast }) {
                           <p className="text-[12px] text-gray-600 truncate">{item.consultation_hour} • {item.counselor_name}</p>
                         </div>
                       </div>
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_STYLES[item.status] || STATUS_STYLES.Pending}`}>
-                        {item.status}
-                      </span>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_STYLES[item.status] || STATUS_STYLES.Pending}`}>{item.status}</span>
                     </div>
 
                     {/* [ADD - URGENCY] - Badge lang */}

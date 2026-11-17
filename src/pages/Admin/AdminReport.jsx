@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 function Bar({ label, value, max, color }) {
   const pct = max ? Math.max((value / max) * 100, value > 0 ? 12 : 0) : 0
@@ -115,6 +118,7 @@ export default function AdminReport() {
           ))}
         </div>
       </div>
+
       <p className="text-[11px] text-gray-400 text-center">Live data from gco-api • Total = Active only, excluding Archived • Use Print Report for the monthly report.</p>
     </div>
   )

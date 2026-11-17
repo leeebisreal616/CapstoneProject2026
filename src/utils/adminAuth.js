@@ -2,8 +2,7 @@
 // REAL backend auth - GCO Admin Portal
 // Naka-connect na sa Render, hindi na sa localhost / XAMPP
 // ============================================================
-const API = import.meta.env.VITE_API_URL || 'https://gco-portal-backend.onrender.com';
-
+const API = 'http://localhost/gco-api/admin';
 const SESSION_KEY = 'gco_admin';
 const ACCESS_KEY = 'gco_admin_access';
 const REFRESH_KEY = 'gco_admin_refresh';
@@ -13,7 +12,7 @@ export async function login(username, password) {
   try {
     const res = await fetch(`${API}/api/admin/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
@@ -36,7 +35,7 @@ export async function refreshAccessToken() {
   try {
     const res = await fetch(`${API}/api/admin/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
     const data = await res.json();
@@ -76,7 +75,7 @@ export async function requestPasswordReset(username) {
   try {
     const res = await fetch(`${API}/api/admin/forgot-password`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ username }),
     });
     return await res.json();
@@ -89,7 +88,7 @@ export async function resetPassword(token, password) {
   try {
     const res = await fetch(`${API}/api/admin/reset-password`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ token, password }),
     });
     return await res.json();

@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 function Badge({ status }) {
   const map = {
@@ -60,7 +63,6 @@ export default function InventorySubmissions() {
       ])
       const studentsList = Array.isArray(studentsRes) ? studentsRes : (studentsRes.data || [])
       const nameMap = buildNameMap(studentsList)
-
       const resolveName = (row) => {
         if (row.name) return row.name
         const full = `${row.first_name || ''} ${row.last_name || ''}`.trim()
@@ -69,10 +71,8 @@ export default function InventorySubmissions() {
         if (sid && nameMap.has(sid)) return nameMap.get(sid)
         return sid ? `Student ${sid}` : 'Student'
       }
-
       const needsList = needsRes.submissions || needsRes.data || needsRes.result || (Array.isArray(needsRes) ? needsRes : [])
       const profileList = profileRes.submissions || profileRes.data || profileRes.result || (Array.isArray(profileRes) ? profileRes : [])
-
       const mappedNeeds = needsList.map(row => ({
         id: `needs-${row.submission_id}`,
         rawId: row.submission_id,

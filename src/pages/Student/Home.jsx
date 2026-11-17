@@ -1,18 +1,25 @@
 import { useState, useEffect } from 'react'
 import { IconCounseling, IconModules, IconAssessment, IconChevronRight } from '../../components/Icons'
+
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
+
 export default function Home({ navigate }) {
   const [announcements, setAnnouncements] = useState([])
   const [student] = useState(() => {
     const saved = localStorage.getItem('student')
     return saved ? JSON.parse(saved) : null
   })
+
   // LOGOUT - balik sa login
   const handleLogout = () => {
     localStorage.removeItem('student')
     localStorage.removeItem('student_id')
     navigate('login')
   }
+
   useEffect(() => {
     const fetchPublished = async () => {
       try {
@@ -29,6 +36,7 @@ export default function Home({ navigate }) {
     }
     fetchPublished()
   }, [])
+
   return (
     // [FIX] Dati: min-h-[calc(100vh-64px)] - pinipilit na maging viewport height, kaya nahahati yung scroll.
     // Ngayon: w-full lang - hayaan yung App.jsx (flex-col + sticky Topbar) yung mag-scroll ng buong page.
@@ -43,6 +51,7 @@ export default function Home({ navigate }) {
             <button onClick={() => navigate('counseling')} className="bg-white/10 border border-white/20 text-white text-[13px] font-semibold px-5 py-2.5 rounded-full transition-all duration-200 hover:bg-white/15 hover:border-white/30 hover:-translate-y-[1px] active:scale-[0.98]">Book Now</button>
           </div>
         </div>
+
         {/* Right card */}
         <div className="w-full md:w-[360px] bg-[#0a5a49] border border-white/10 rounded-2xl p-4 transition-all duration-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:border-white/20">
           <p className="text-[10px] font-bold tracking-widest text-white/40 mb-3">GUIDANCE & COUNSELING OFFICE</p>
@@ -62,6 +71,7 @@ export default function Home({ navigate }) {
           </div>
         </div>
       </div>
+
       {/* LIVE ANNOUNCEMENTS - PROFESSIONAL, GALING ADMIN */}
       <div className="px-4 md:px-10 pt-5">
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -77,6 +87,7 @@ export default function Home({ navigate }) {
             </div>
             <p className="text-[11px] font-medium text-gray-400 hidden sm:block">From Guidance & Counseling Office</p>
           </div>
+
           {/* List */}
           {announcements.length > 0 ? (
             <div className="divide-y divide-gray-100">
@@ -111,6 +122,7 @@ export default function Home({ navigate }) {
           )}
         </div>
       </div>
+
       {/* Bottom 3 cards - SAME HOVER AS ASSESSMENT */}
       <div className="px-4 md:px-10 py-5 grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
@@ -130,10 +142,12 @@ export default function Home({ navigate }) {
           </button>
         ))}
       </div>
+
       {/* Footer - MAY LOGOUT NA SA LOWER RIGHT, HINDI CORNY */}
       <div className="px-6 py-4 border-t border-gray-100 bg-white flex flex-col md:flex-row items-center justify-between gap-3">
         <p className="text-[11px] text-gray-400 leading-relaxed text-center md:text-left">
-          CvSU Imus Campus • Est. 2004 • Free and confidential for all enrolled students {student && <span className="hidden md:inline"> • {student.full_name || student.student_id}</span>}
+          CvSU Imus Campus • Est. 2004 • Free and confidential for all enrolled students
+          {student && <span className="hidden md:inline"> • {student.full_name || student.student_id}</span>}
         </p>
         <div className="flex items-center gap-3">
           {student && <span className="text-[11px] text-gray-500 hidden md:block">{student.student_id}</span>}

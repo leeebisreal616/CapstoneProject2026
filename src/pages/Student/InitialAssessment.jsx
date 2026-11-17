@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react'
+
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api/assessment_results'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com/assessment_results'
+
 const exams = {
   personality: {
     title: 'Personality Profile',
@@ -46,6 +51,7 @@ const exams = {
     }
   }
 }
+
 function ConfirmModal({ answered, total, onConfirm, onReview }) {
   useEffect(() => {
     const h = (e) => { if (e.key === 'Escape') onReview() }
@@ -63,6 +69,7 @@ function ConfirmModal({ answered, total, onConfirm, onReview }) {
     </div>
   )
 }
+
 function ExamScreen({ type, onBack }) {
   const exam = exams[type]
   const [current, setCurrent] = useState(0)
@@ -79,7 +86,11 @@ function ExamScreen({ type, onBack }) {
     const storedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('student') || localStorage.getItem('gco_user') || '{}')
     const sid = storedUser.student_id || storedUser.student_number || '202311325'
     try {
-      await fetch(BASE + '/create_result.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ student_id: sid, exam_type: type, score: score, result_label: resScore.label, flag_level: resScore.flag }) })
+      await fetch(BASE + '/create_result.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: sid, exam_type: type, score: score, result_label: resScore.label, flag_level: resScore.flag })
+      })
     } catch(e){ console.error(e) }
     setSaving(false)
     setShowConfirm(false)
@@ -151,6 +162,7 @@ function ExamScreen({ type, onBack }) {
     </div>
   )
 }
+
 export default function Assessment() {
   const [view, setView] = useState('list')
   const [completed, setCompleted] = useState([])
@@ -158,12 +170,12 @@ export default function Assessment() {
     const storedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('student') || localStorage.getItem('gco_user') || '{}')
     const sid = storedUser.student_id || storedUser.student_number || '202311325'
     fetch(BASE + '/get_results.php?student_id=' + sid)
-      .then(r=>r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setCompleted(data.map(d => d.exam_type === 'Well-Being' ? 'wellbeing' : d.exam_type === 'Personality' ? 'personality' : d.exam_type.toLowerCase()))
-        }
-      }).catch(()=>{})
+    .then(r=>r.json())
+    .then(data => {
+      if (Array.isArray(data)) {
+        setCompleted(data.map(d => d.exam_type === 'Well-Being' ? 'wellbeing' : d.exam_type === 'Personality' ? 'personality' : d.exam_type.toLowerCase()))
+      }
+    }).catch(()=>{})
   }, [view])
   if (view!== 'list') return <ExamScreen type={view} onBack={() => setView('list')} />
   const isDone = (key) => completed.includes(key)

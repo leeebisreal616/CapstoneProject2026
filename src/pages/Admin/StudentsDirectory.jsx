@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 const Icon = {
   x: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}><path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" /></svg>,
@@ -132,6 +135,7 @@ export default function StudentsDirectory() {
         const flag = flagRaw.includes('monitor') || flagRaw.includes('watch') || flagRaw.includes('moderate') ? 'watch' : flagRaw.includes('high') || flagRaw.includes('urgent') || flagRaw.includes('attention') ? 'urgent' : 'normal'
         return { id: r.result_id || r.id, studentId: String(r.student_id || r.studentId), exam: r.exam_type || r.exam || 'Assessment', result: label ? `${pct}% - ${label}` : `${pct}%`, score, pct, label, flag, date: r.date_taken || r.created_at || r.date || r.submitted_at }
       })
+
       setAppointments(normApps)
       setInventory([...normNeeds, ...normProfiles])
       setExams(normExams)
@@ -146,6 +150,7 @@ export default function StudentsDirectory() {
           studentMap.get(id).name = name
         }
       }
+
       studentsData.forEach(r => {
         const full = `${r.first_name || r.firstname || ''} ${r.last_name || r.lastname || ''}`.trim()
         addToMap(r.student_id || r.studentId || r.id, full || r.student_name || r.name, r.course || r.course_year, r.year || r.year_level)
@@ -153,6 +158,7 @@ export default function StudentsDirectory() {
       ;[...appData, ...needsData, ...profileData, ...assessData].forEach(r => {
         addToMap(r.student_id || r.studentId, r.student_name || r.name || r.full_name, r.course || r.course_year || r.courseYear, r.year || r.year_level)
       })
+
       const finalStudents = Array.from(studentMap.values()).map(s => {
         const sExams = normExams.filter(e => String(e.studentId) === String(s.id)).sort((a, b) => new Date(b.date) - new Date(a.date))
         return { ...s, flag: sExams.length ? sExams[0].flag : 'none', lastExam: sExams.length ? sExams[0] : null }
@@ -226,6 +232,7 @@ export default function StudentsDirectory() {
           </tbody>
         </table>
       </div>
+
       <p className="text-[11px] text-gray-400 text-center">Live data • Unique student ID • Click a student to see appointments, forms, and exams</p>
       {selected && <StudentDetailModal student={selected} appointments={appointments} inventory={inventory} exams={exams} onClose={() => setSelected(null)} />}
     </div>

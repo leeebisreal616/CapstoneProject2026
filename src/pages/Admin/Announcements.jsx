@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 
+// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 function Badge({ status }) {
   const isPublished = String(status || '').toLowerCase() === 'published'
@@ -69,81 +72,42 @@ export default function AnnouncementsManagement() {
 
   const handleSave = async (wantStatus) => {
     const statusToSave = wantStatus || form.status
-    if (!form.title.trim()) {
-      setFormError('Please enter a title.')
-      return
-    }
-    if (!form.desc.trim()) {
-      setFormError('Please enter a description.')
-      return
-    }
+    if (!form.title.trim()) { setFormError('Please enter a title.'); return }
+    if (!form.desc.trim()) { setFormError('Please enter a description.'); return }
     setFormError('')
     try {
       const res = editing
-        ? await fetch(`${BASE}/announcements/update_announcement.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: editing.id, announcement_id: editing.id, title: form.title, description: form.desc, status: statusToSave })
-          })
-        : await fetch(`${BASE}/announcements/create_announcement.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: form.title, description: form.desc, status: statusToSave })
-          })
+        ? await fetch(`${BASE}/announcements/update_announcement.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, announcement_id: editing.id, title: form.title, description: form.desc, status: statusToSave }) })
+        : await fetch(`${BASE}/announcements/create_announcement.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, description: form.desc, status: statusToSave }) })
       const result = await res.json().catch(() => ({}))
-      if (result && result.success === false) {
-        setFormError('Failed to save announcement: ' + (result.message || 'Please check the server.'))
-        return
-      }
+      if (result && result.success === false) { setFormError('Failed to save announcement: ' + (result.message || 'Please check the server.')); return }
       setForm({ title: '', desc: '', status: 'Draft' })
       setEditing(null)
       fetchLive()
-    } catch (err) {
-      setFormError('Failed to save announcement. Please check create_announcement.php or update_announcement.php.')
-    }
+    } catch (err) { setFormError('Failed to save announcement. Please check create_announcement.php or update_announcement.php.') }
   }
 
   // NGAYON: hindi na biglaang Publish / Unpublish — may Modal muna
-  const handleToggle = (item) => {
-    setConfirmToggle(item)
-  }
-
+  const handleToggle = (item) => { setConfirmToggle(item) }
   const confirmToggleAnnouncement = async () => {
     if (!confirmToggle) return
     const newStatus = (confirmToggle.status || '').toLowerCase() === 'published' ? 'Draft' : 'Published'
     try {
-      await fetch(`${BASE}/announcements/update_announcement.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: confirmToggle.id, announcement_id: confirmToggle.id, title: confirmToggle.title, description: confirmToggle.desc, status: newStatus })
-      })
+      await fetch(`${BASE}/announcements/update_announcement.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmToggle.id, announcement_id: confirmToggle.id, title: confirmToggle.title, description: confirmToggle.desc, status: newStatus }) })
       setConfirmToggle(null)
       fetchLive()
-    } catch {
-      setConfirmToggle(null)
-      setPageError('Failed to update announcement status.')
-    }
+    } catch { setConfirmToggle(null); setPageError('Failed to update announcement status.') }
   }
 
   // NGAYON: hindi na confirm(), bubukas lang ng Modal
-  const handleDelete = (item) => {
-    setConfirmDelete(item)
-  }
-
+  const handleDelete = (item) => { setConfirmDelete(item) }
   const confirmDeleteAnnouncement = async () => {
     if (!confirmDelete) return
     try {
-      await fetch(`${BASE}/announcements/delete_announcement.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: confirmDelete.id, announcement_id: confirmDelete.id })
-      })
+      await fetch(`${BASE}/announcements/delete_announcement.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmDelete.id, announcement_id: confirmDelete.id }) })
       setConfirmDelete(null)
       fetchLive()
-    } catch {
-      setConfirmDelete(null)
-      setPageError('Failed to delete announcement.')
-    }
+    } catch { setConfirmDelete(null); setPageError('Failed to delete announcement.') }
   }
 
   const handleEdit = (item) => {
@@ -245,6 +209,7 @@ export default function AnnouncementsManagement() {
             </div>
             {editing && <button onClick={() => { setEditing(null); setFormError(''); setForm({ title: '', desc: '', status: 'Draft' }) }} className="ml-auto w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">{Icon.x('w-4 h-4')}</button>}
           </div>
+
           <div className="flex flex-col gap-3">
             <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Title</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title e.g. No Walk-in Sessions This Week" className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#085041]" /></div>
             <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Description</label><textarea value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} placeholder="Enter the announcement description" rows={4} className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#085041] resize-none" /></div>

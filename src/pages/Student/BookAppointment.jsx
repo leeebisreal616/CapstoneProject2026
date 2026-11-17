@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import CvsuPortalModal from '../../components/CvsuPortalModal'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://gco-portal-backend.onrender.com'
+// LOCAL: D:\xampp\htdocs\gco-api
+const BASE = 'http://localhost/gco-api'
+// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
+// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 export default function BookAppointment() {
   const [showPortal, setShowPortal] = useState(false)
@@ -20,6 +23,7 @@ export default function BookAppointment() {
   const [consent1, setConsent1] = useState(false)
   const [consent2, setConsent2] = useState(false)
   const [loading, setLoading] = useState(false)
+
   // [ADD - URGENCY] - bago lang, walang ginalaw sa taas
   const [urgency, setUrgency] = useState('Normal')
   const [showEmergencyModal, setShowEmergencyModal] = useState(false)
@@ -34,8 +38,10 @@ export default function BookAppointment() {
     }
   }
 
-  // [BLANK MUNA] - Walang counselor names. Add na lang tayo pag tapos na lahat.
-  const counselors = []
+  const counselors = [
+    { name: "Jervin D. Quicho", role: "GCO Head - Imus", initial: "JQ" },
+    { name: "Hazel Grace B. Malayo", role: "GCO Staff - Imus", initial: "HM" }
+  ]
 
   const allSlots = [
     { label: "7AM-8AM", hour24: 7 },
@@ -48,17 +54,43 @@ export default function BookAppointment() {
     { label: "3PM-4PM", hour24: 15 },
   ]
 
-  const showNoticeModal = (msg, type = 'error') => { setNoticeMsg(msg); setNoticeType(type); setShowNotice(true) }
-  const isWeekend = (dateStr) => { if (!dateStr) return false; const d = new Date(dateStr); return d.getDay() === 0 || d.getDay() === 6 }
-  const getAvailableSlots = () => { if (!selectedDate || isWeekend(selectedDate)) return []; if (selectedDate !== new Date().toISOString().split('T')[0]) return allSlots; return allSlots.filter(s => s.hour24 > new Date().getHours()) }
-  const getNextWeekdays = () => { const days = []; let d = new Date(); while (days.length < 10) { if (d.getDay() !== 0 && d.getDay() !== 6) days.push(new Date(d)); d.setDate(d.getDate() + 1) } return days }
+  const showNoticeModal = (msg, type = 'error') => {
+    setNoticeMsg(msg); setNoticeType(type); setShowNotice(true)
+  }
+
+  const isWeekend = (dateStr) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return d.getDay() === 0 || d.getDay() === 6
+  }
+
+  const getAvailableSlots = () => {
+    if (!selectedDate || isWeekend(selectedDate)) return [];
+    if (selectedDate !== new Date().toISOString().split('T')[0]) return allSlots;
+    return allSlots.filter(s => s.hour24 > new Date().getHours())
+  }
+
+  const getNextWeekdays = () => {
+    const days = [];
+    let d = new Date();
+    while (days.length < 10) {
+      if (d.getDay() !== 0 && d.getDay() !== 6) days.push(new Date(d));
+      d.setDate(d.getDate() + 1)
+    }
+    return days
+  }
 
   const handleBook = async () => {
     if (!selectedDate || !selectedTime) { showNoticeModal("Select date and time"); return }
     if (!reason.trim() || !emergencyName || !emergencyNo) { showNoticeModal("Complete required fields"); return }
     if (!consent1 || !consent2) { showNoticeModal("Agree to consent statements"); return }
+
     // [ADD - URGENCY] - check lang kung Emergency pero hindi pa nag-agree sa disclaimer
-    if (urgency === 'Emergency' && !emergencyAgreed) { showNoticeModal("Please read and agree to the Emergency Disclaimer first."); setShowEmergencyModal(true); return }
+    if (urgency === 'Emergency' && !emergencyAgreed) {
+      showNoticeModal("Please read and agree to the Emergency Disclaimer first.");
+      setShowEmergencyModal(true); return
+    }
+
     setLoading(true)
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || localStorage.getItem('student') || localStorage.getItem('gco_user') || '{}')
@@ -68,7 +100,8 @@ export default function BookAppointment() {
       const course = storedUser.course || 'BSIT'
       const yearLevel = storedUser.year_level || storedUser.year || '4th Year'
       const studentInfo = `${firstName} ${lastName} - ${realStudentId} - ${course} ${yearLevel}`
-      const res = await fetch(`${API_BASE}/api/appointments`, {
+
+      const res = await fetch(`${BASE}/appointments/create_appointment.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,6 +126,7 @@ export default function BookAppointment() {
           emergency_contact_no: emergencyNo
         })
       })
+
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || data.error || 'Booking failed')
       showNoticeModal(`Booked as ${data.student_info || studentInfo}`, "success")
@@ -187,6 +221,8 @@ export default function BookAppointment() {
           </div>
 
           <button onClick={handleBook} disabled={loading} className="w-full mt-6 bg-[#085041] text-white font-medium py-3 rounded-full text-[13px]">{loading ? 'Booking...' : urgency === 'Emergency' ? '🚨 Send Emergency Request' : 'Confirm Booking'}</button>
+
+          {/* [ADD - URGENCY] - Limitations footer lang */}
           <p className="text-[10px] text-gray-400 text-center leading-relaxed mt-3">*LIMITATION: If life and death situation, please contact nearest hospital / NCMH Crisis Hotline 1553 / 911 immediately. This portal is monitored only during school hours (Mon-Thurs, 7AM-4PM).</p>
         </div>
       </div>
