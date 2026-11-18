@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { logout } from '../../utils/adminAuth'
+import { logout } from '../../utils/counsellorAuth'
 import Overview from './Overview'
 import Appointments from './Appointments'
 import InventorySubmissions from './Inventory'
@@ -7,7 +7,7 @@ import AssessmentResults from './Assessment'
 import ModulesManagement from './Modules'
 import AnnouncementsManagement from './Announcements'
 import StudentDirectory from './StudentsDirectory'
-import AdminReport from './AdminReport'
+import AdminReport from './CounsellorReport'
 
 const Icon = {
   overview: (c) => (

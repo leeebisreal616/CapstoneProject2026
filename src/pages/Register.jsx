@@ -6,30 +6,50 @@ const BASE = 'http://localhost/gco-api'
 // LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
 // const BASE = 'https://gco-api.infinityfreeapp.com'
 
+const SERVER_ERROR = 'Cannot connect to server. Please try again.'
+
+const COURSES = [
+  'Bachelor of Arts in Journalism',
+  'Bachelor of Early Childhood Education',
+  'Bachelor of Elementary Education',
+  'Bachelor of Science in Business Administration',
+  'Bachelor of Science in Computer Science',
+  'Bachelor of Science in Entrepreneurship',
+  'Bachelor of Science in Hospitality Management',
+  'Bachelor of Science in Information Technology',
+  'Bachelor of Science in Office Administration',
+  'Bachelor of Science in Psychology',
+  'Bachelor of Secondary Education',
+]
+
 export default function Register() {
-  const [form, setForm] = useState({ student_id: '', first_name: '', last_name: '', middle_initial: '', email: '', course: '', year_level: '' })
+  const [form, setForm] = useState({
+    student_id: '',
+    first_name: '',
+    last_name: '',
+    middle_initial: '',
+    email: '',
+    course: '',
+    year_level: ''
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [emailTouched, setEmailTouched] = useState(false) // pag ikaw nag-type ng email, stop auto
+  const [emailTouched, setEmailTouched] = useState(false)
   const navigate = useNavigate()
+
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
-  // LIVE auto-generate: kahit 1 letter pa lang, generate na agad
-  // Lorenz -> lorenz@cvsu.edu.ph
-  // Lorenz Justin -> lorenzjustin@cvsu.edu.ph
-  // Lorenz Justin + Sarte -> lorenzjustin.sarte@cvsu.edu.ph
-  // Pag nag-backspace -> nabubura din yung email
+  // Auto-generate: Lorenz Justin + Sarte -> lorenzjustin.sarte@cvsu.edu.ph
   const buildEmail = (first, last) => {
-    const clean = (s) => s.toLowerCase().trim().replace(/[^a-z ]/g, '').split(' ').filter(Boolean).join('') || ''
-    const f = clean(first) // lahat ng first names pinagdikit - Lorenz Justin = lorenzjustin
-    const l = clean(last) // Dela Cruz = delacruz
-    if (!f && !l) return '' // pag binura lahat, burado din email
+    const clean = (s) => s.toLowerCase().trim().replace(/[^a-z ]/g, '').split(' ').filter(Boolean).join('')
+    const f = clean(first)
+    const l = clean(last)
+    if (!f && !l) return ''
     if (f && l) return `${f}.${l}@cvsu.edu.ph`
-    if (f) return `${f}@cvsu.edu.ph` // First Name pa lang naka-type, live na agad
-    return `${l}@cvsu.edu.ph` // Last Name pa lang naka-type
+    if (f) return `${f}@cvsu.edu.ph`
+    return `${l}@cvsu.edu.ph`
   }
 
-  // LIVE: kada type / backspace, update agad yung email
   const handleNameChange = (key, value) => {
     const newForm = { ...form, [key]: value }
     if (emailTouched) { setForm(newForm); return }
@@ -37,12 +57,27 @@ export default function Register() {
       key === 'first_name' ? value : newForm.first_name,
       key === 'last_name' ? value : newForm.last_name
     )
-    setForm({ ...newForm, email: autoEmail }) // kahit '' yan, i-set pa rin para mabura pag nag-backspace
+    setForm({ ...newForm, email: autoEmail })
+  }
+
+  const handleEmailChange = (value) => {
+    set('email', value)
+    // Pag binura ng buo, balik sa auto-fill. Pag nag-type, manual na.
+    setEmailTouched(value.trim() !== '')
   }
 
   const handleRegister = async (e) => {
     e.preventDefault()
     setError('')
+
+    // Frontend validation - para hindi na umabot sa backend yung blanko
+    if (form.student_id.length !== 9) { setError('Student ID must be 9 digits.'); return }
+    if (!form.first_name.trim()) { setError('Please enter your First Name.'); return }
+    if (!form.last_name.trim()) { setError('Please enter your Last Name.'); return }
+    if (!form.email.trim() || !form.email.endsWith('@cvsu.edu.ph')) { setError('Please use your CvSU email (@cvsu.edu.ph).'); return }
+    if (!form.course) { setError('Please select your Course.'); return }
+    if (!form.year_level) { setError('Please select your Year Level.'); return }
+
     setLoading(true)
     try {
       const res = await fetch(`${BASE}/students/register.php`, {
@@ -54,9 +89,11 @@ export default function Register() {
       if (data.success) {
         navigate('/login', { state: { registered: true, student_id: form.student_id } })
       } else {
-        setError(data.message)
+        setError(data.message || 'Registration failed. Please try again.')
       }
-    } catch (err) { setError('API Error: ' + err.message) }
+    } catch {
+      setError(SERVER_ERROR)
+    }
     setLoading(false)
   }
 
@@ -72,17 +109,18 @@ export default function Register() {
               <path d="M5 10v6c0 1.5 3 3 7 3s7-1.5 7-3v-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="text-[20px] font-bold text-gray-900">GCO Student Portal</h1>
-          <p className="text-[13px] text-gray-500">CvSU Imus Campus</p>
+          <h1 className="text-[20px] font-bold text-gray-900">GCO Student Registration</h1>
+          <p className="text-[13px] text-gray-500">Guidance and Counseling Office <span className="mx-1 text-gray-300">|</span> CvSU Imus Campus</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-[16px] font-bold text-gray-900 mb-1">Create Student Account</h2>
           <p className="text-[12px] text-gray-500 mb-5">For CvSU Imus students only.</p>
+
           <form onSubmit={handleRegister} className="space-y-3">
             <div>
               <label className="block text-[12px] font-semibold text-gray-700 mb-2">STUDENT ID</label>
-              <input className={inputCls} placeholder="e.g. 202311325" value={form.student_id} onChange={(e) => set('student_id', e.target.value.replace(/\D/g, '').slice(0, 9))} />
+              <input className={inputCls} placeholder="e.g. 202311325" inputMode="numeric" value={form.student_id} onChange={(e) => set('student_id', e.target.value.replace(/\D/g, '').slice(0, 9))} />
             </div>
 
             <div className="flex gap-3">
@@ -90,7 +128,7 @@ export default function Register() {
                 <label className="block text-[12px] font-semibold text-gray-700 mb-2">FIRST NAME</label>
                 <input className={inputCls} placeholder="Juan" value={form.first_name} onChange={(e) => handleNameChange('first_name', e.target.value)} />
               </div>
-              <div className="w-[105px]">
+              <div className="w-[70px]">
                 <label className="block text-[12px] font-semibold text-gray-700 mb-2">M.I.</label>
                 <input className={inputCls + " text-center"} placeholder="Optional" maxLength={1} value={form.middle_initial} onChange={(e) => set('middle_initial', e.target.value.replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase())} />
               </div>
@@ -102,8 +140,8 @@ export default function Register() {
 
             <div>
               <label className="block text-[12px] font-semibold text-gray-700 mb-2">CvSU EMAIL</label>
-              <input className={inputCls} placeholder="Auto-filled from your name" type="email" value={form.email} onChange={(e) => { set('email', e.target.value); setEmailTouched(e.target.value !== '') }} />
-              <p className="text-[11px] text-gray-400 mt-1">Live auto-filled from your name. You can still edit it if needed.</p>
+              <input className={inputCls} placeholder="Auto-filled from your name" type="email" value={form.email} onChange={(e) => handleEmailChange(e.target.value)} />
+              <p className="text-[11px] text-gray-400 mt-1">Auto-filled from your name. You can still edit it if needed.</p>
             </div>
 
             <div className="flex gap-3">
@@ -111,17 +149,7 @@ export default function Register() {
                 <label className="block text-[12px] font-semibold text-gray-700 mb-2">COURSE</label>
                 <select className={inputCls} value={form.course} onChange={(e) => set('course', e.target.value)}>
                   <option value="">Select Course</option>
-                  <option value="BA Journalism">Bachelor of Arts in Journalism</option>
-                  <option value="BECED">Bachelor of Early Childhood Education</option>
-                  <option value="BEED">Bachelor of Elementary Education</option>
-                  <option value="BSBA">Bachelor of Science in Business Administration</option>
-                  <option value="BSCS">Bachelor of Science in Computer Science</option>
-                  <option value="BS Entrep">Bachelor of Science in Entrepreneurship</option>
-                  <option value="BSHM">Bachelor of Science in Hospitality Management</option>
-                  <option value="BSIT">Bachelor of Science in Information Technology</option>
-                  <option value="BSOA">Bachelor of Science in Office Administration</option>
-                  <option value="BS Psych">Bachelor of Science in Psychology</option>
-                  <option value="BSED">Bachelor of Secondary Education</option>
+                  {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="w-[130px]">
@@ -141,9 +169,7 @@ export default function Register() {
             <button type="submit" disabled={loading} className="w-full h-[48px] bg-[#085041] hover:bg-[#063a2e] text-white text-[14px] font-semibold rounded-full transition-colors disabled:opacity-50">
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
-            <p className="text-[12px] text-center text-gray-500">
-              Already have an account? <Link to="/login" className="font-semibold text-[#085041]">Login</Link>
-            </p>
+            <p className="text-[12px] text-center text-gray-500">Already have an account? <Link to="/login" className="font-semibold text-[#085041]">Login</Link></p>
           </form>
         </div>
       </div>

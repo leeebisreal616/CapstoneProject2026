@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { requestPasswordReset } from '../../utils/adminAuth'
+import { requestPasswordReset } from '../../utils/counsellorAuth'
 
-export default function AdminForgotPassword() {
+export default function CounsellorForgotPassword() {
   const [username, setUsername] = useState('')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -26,7 +26,7 @@ export default function AdminForgotPassword() {
             <img src="/gco-seal.png" alt="GCO Seal" className="w-full h-full object-cover" />
           </div>
           <p className="text-[18px] font-bold text-gray-900">Forgot Password</p>
-          <p className="text-[13px] text-gray-500 mt-1">GCO Admin Portal - CvSU Imus Campus</p>
+          <p className="text-[13px] text-gray-500 mt-1">GCO Counsellor Login <span className="mx-1 text-gray-300">|</span> CvSU Imus Campus</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
@@ -38,7 +38,7 @@ export default function AdminForgotPassword() {
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="e.g. leeebisreal616@gmail.com"
+                placeholder="e.g. counsellor@cvsu.edu.ph"
                 className="w-full border-[1.5px] border-gray-200 rounded-xl px-3.5 py-3 text-[15px] outline-none focus:border-[#1D9E75]"
                 required
               />
@@ -52,7 +52,13 @@ export default function AdminForgotPassword() {
 
           {message && !sent && <p className="text-[12.5px] text-red-500 mt-3">{message}</p>}
 
-          <Link to="/admin/login" className="block text-center text-[13px] text-[#085041] font-semibold mt-4">Back to Login</Link>
+          {/* FIX: /admin/login -> /counsellor/login. Yung /admin/login, nahuhulog sa student guard kaya student login yung lumalabas */}
+          <Link to="/counsellor/login" className="block text-center text-[13px] text-[#085041] font-semibold mt-4">Back to Counsellor Login</Link>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-2">
+            <span className="text-[12px] text-gray-500">Not a counsellor?</span>
+            <Link to="/login" className="text-[12px] font-bold text-[#085041] hover:underline">Student Login</Link>
+          </div>
         </form>
       </div>
     </div>

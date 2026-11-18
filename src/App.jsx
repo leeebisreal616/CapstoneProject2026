@@ -5,7 +5,7 @@ import BottomNav from './components/BottomNav'
 import ErrorBoundary from './components/ErrorBoundary'
 import OfflineBanner from './components/OfflineBanner'
 
-// STUDENT - NASA Student FOLDER LAHAT NGAYON
+// STUDENT
 import Home from './pages/Student/Home'
 import AppointmentHistory from './pages/Student/AppointmentHistory'
 import BookAppointment from './pages/Student/BookAppointment'
@@ -14,12 +14,12 @@ import InitialAssessment from './pages/Student/InitialAssessment'
 import StudentLogin from './pages/StudentLogin'
 import Register from './pages/Register'
 
-// ADMIN - NASA Admin FOLDER - MALAKING A, YAN YUNG NASA dir MO
-import AdminDashboard from './pages/Admin/AdminDashboard'
-import AdminLogin from './pages/Admin/AdminLogin'
-import AdminForgotPassword from './pages/Admin/AdminForgotPassword'
-import AdminResetPassword from './pages/Admin/AdminResetPassword'
-import { isLoggedIn } from './utils/adminAuth'
+// COUNSELLOR
+import CounsellorDashboard from './pages/Counsellor/CounsellorDashboard'
+import CounsellorLogin from './pages/Counsellor/CounsellorLogin'
+import CounsellorForgotPassword from './pages/Counsellor/CounsellorForgotPassword'
+import CounsellorResetPassword from './pages/Counsellor/CounsellorResetPassword'
+import { isLoggedIn } from './utils/counsellorAuth'
 
 // Toast Context
 export const ToastContext = createContext(null)
@@ -43,14 +43,12 @@ function NotFound({ navigate }) {
       </div>
       <p className="text-[20px] font-bold text-gray-900 mb-2">Page Not Found</p>
       <p className="text-[14px] text-gray-500 mb-6">The page you're looking for doesn't exist.</p>
-      <button onClick={() => navigate('/')} className="bg-[#085041] text-white px-6 py-3 rounded-full text-[14px] font-semibold">
-        Go Home
-      </button>
+      <button onClick={() => navigate('/')} className="bg-[#085041] text-white px-6 py-3 rounded-full text-[14px] font-semibold">Go Home</button>
     </div>
   )
 }
 
-// --- PROTECTION PARA SA STUDENT - KATULAD NG ADMIN ---
+// --- PROTECTION PARA SA STUDENT ---
 function RequireStudentAuth({ children }) {
   const student = localStorage.getItem('student')
   if (!student) {
@@ -102,27 +100,30 @@ function StudentLayout() {
   )
 }
 
-// Gated admin area
-function AdminArea() {
+// Gated counsellor area
+function CounsellorArea() {
   const [authed, setAuthed] = useState(isLoggedIn())
-  useEffect(() => {
-    setAuthed(isLoggedIn())
-  }, [])
+  useEffect(() => { setAuthed(isLoggedIn()) }, [])
   if (!authed) {
-    return <AdminLogin onSuccess={() => setAuthed(true)} />
+    return <CounsellorLogin onSuccess={() => setAuthed(true)} />
   }
-  return <AdminDashboard onLogout={() => setAuthed(false)} />
+  return <CounsellorDashboard onLogout={() => setAuthed(false)} />
 }
 
 export default function App() {
   return (
     <ErrorBoundary>
       <Routes>
+        {/* STUDENT */}
         <Route path="/login" element={<StudentLogin />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
-        <Route path="/admin/reset-password" element={<AdminResetPassword />} />
-        <Route path="/admin/*" element={<AdminArea />} />
+
+        {/* COUNSELLOR - DAPAT BAGO YUNG /* NA STUDENT, KUNDI MAHUHULOG SYA SA STUDENT GUARD */}
+        <Route path="/counsellor/forgot-password" element={<CounsellorForgotPassword />} />
+        <Route path="/counsellor/reset-password" element={<CounsellorResetPassword />} />
+        <Route path="/counsellor/*" element={<CounsellorArea />} />
+
+        {/* STUDENT AREA - PINAKADULO LANG DAPAT TO */}
         <Route path="/*" element={
           <RequireStudentAuth>
             <StudentLayout />

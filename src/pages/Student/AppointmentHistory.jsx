@@ -1,102 +1,103 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+
 const BASE = 'http://localhost/gco-api'
 // LIVE: https://gco-api.infinityfreeapp.com
-const MOCK_STUDENT = { name: 'Aaron Valencia', id: '202311325', course: 'BSIT 4th Year' }
+
 const STATUS_STYLES = {
   Pending: 'bg-amber-50 text-amber-700 border-amber-200',
   Approved: 'bg-blue-50 text-blue-700 border-blue-200',
   Completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   Cancelled: 'bg-gray-100 text-gray-500 border-gray-200',
-  Booked: 'bg-amber-50 text-amber-700 border-amber-200',
 }
-
-// [ADD - URGENCY] - Badge colors lang
 const URGENCY_STYLES = {
   Normal: 'bg-gray-100 text-gray-600 border-gray-200',
   Urgent: 'bg-orange-50 text-orange-700 border-orange-200',
   Emergency: 'bg-red-50 text-red-700 border-red-200',
 }
+const URGENCY_LABEL = { Normal: 'Normal', Urgent: '⚠️ Urgent', Emergency: '🚨 Emergency' }
+
+const FILTERS = ['All', 'Pending', 'Approved', 'Cancelled']
+
+// Unahin lagi yung 'student', HINDI 'user' — kasi yung 'user' pang-Admin yan.
+function getStudent() {
+  try {
+    const raw = localStorage.getItem('student')
+    if (raw) {
+      const u = JSON.parse(raw)
+      const id = u.student_id || u.studentId || u.id
+      if (id) return { name: u.student_name || u.name || '', id: String(id), course: u.course || '' }
+    }
+    const sid = localStorage.getItem('student_id') || localStorage.getItem('studentId')
+    if (sid) return { name: '', id: String(sid), course: '' }
+  } catch {}
+  return { name: '', id: '', course: '' }
+}
+
+function Divider() { return <span className="w-px h-3 bg-gray-300 shrink-0" /> }
+const isPending = (s) => s === 'Pending' || s === 'Booked'
 
 export default function AppointmentHistory({ showToast }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showNotice, setShowNotice] = useState(false)
-  const [noticeMsg, setNoticeMsg] = useState('')
+  const [notice, setNotice] = useState({ msg: '', show: false })
   const [filter, setFilter] = useState('All')
-  // Kunin yung totoong naka-login, hindi lang MOCK
-  const student = (() => {
-    try {
-      const raw = localStorage.getItem('user') || localStorage.getItem('student')
-      if (raw) {
-        const u = JSON.parse(raw)
-        return {
-          name: u.student_name || u.name || MOCK_STUDENT.name,
-          id: String(u.student_id || u.studentId || u.id || MOCK_STUDENT.id),
-          course: u.course || MOCK_STUDENT.course,
-        }
-      }
-    } catch {}
-    const sid = localStorage.getItem('student_id') || localStorage.getItem('studentId')
-    if (sid) return { ...MOCK_STUDENT, id: String(sid) }
-    return MOCK_STUDENT
-  })()
+  const student = useMemo(() => getStudent(), [])
+
   useEffect(() => {
+    if (!student.id) { setHistory([]); setLoading(false); return }
     const fetchHistory = async () => {
       try {
         setLoading(true)
         const res = await fetch(`${BASE}/appointments/get_appointments.php?student_id=${student.id}`)
         const data = await res.json()
         const list = Array.isArray(data) ? data : (data.data || [])
-        const mapped = list.map(r => ({
+        setHistory(list.map(r => ({
           id: r.id,
-          student_id: r.student_id,
-          student_name: r.student_name,
-          concern: r.concern,
           reason: r.concern || r.reason || 'No reason provided',
           appointment_date: r.appointment_date || r.date,
           consultation_hour: r.time_slot || r.consultation_hour || '',
-          time_slot: r.time_slot,
           counselor_name: r.counselor_name || '',
           status: r.status || 'Pending',
-          urgency_level: r.urgency_level,
-        }))
-        setHistory(mapped.reverse())
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
+          urgency_level: r.urgency_level || 'Normal',
+        })).reverse())
+      } catch (err) { console.error(err) }
+      finally { setLoading(false) }
     }
     fetchHistory()
   }, [student.id])
 
-  // [FIX] Dati: local lang, kaya bumabalik sa Pending pag lumipat ng tab.
-  // Ngayon: tinatawag na yung existing mong update_status.php, kaya naka-save na sa DB.
   const cancelBooking = async (id) => {
     try {
       const res = await fetch(`${BASE}/appointments/update_status.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: id, status: 'Cancelled' })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'Cancelled' }),
       })
       const result = await res.json()
       if (!res.ok || result.success === false) throw new Error(result.message || 'Failed to cancel')
-
       setHistory(prev => prev.map(h => h.id === id ? { ...h, status: 'Cancelled' } : h))
-      setNoticeMsg("Appointment cancelled successfully.")
-      setShowNotice(true)
-      if (showToast) showToast('Appointment cancelled')
-    } catch (err) {
-      setNoticeMsg(err.message); setShowNotice(true)
-    }
+      setNotice({ msg: "Appointment cancelled successfully.", show: true })
+      showToast?.('Appointment cancelled')
+    } catch (err) { setNotice({ msg: err.message, show: true }) }
   }
 
-  const filtered = filter === 'All' ? history : history.filter(h => h.status === filter || (filter === 'Pending' && h.status === 'Booked'))
-  const counts = {
-    All: history.length,
-    Pending: history.filter(h => h.status === 'Pending' || h.status === 'Booked').length,
-    Approved: history.filter(h => h.status === 'Approved').length,
-    Cancelled: history.filter(h => h.status === 'Cancelled').length,
+  const counts = { All: history.length, Pending: 0, Approved: 0, Cancelled: 0 }
+  history.forEach(h => {
+    if (isPending(h.status)) counts.Pending++
+    else if (h.status === 'Approved') counts.Approved++
+    else if (h.status === 'Cancelled') counts.Cancelled++
+  })
+  const filtered = filter === 'All' ? history : history.filter(h => filter === 'Pending' ? isPending(h.status) : h.status === filter)
+
+  if (!student.id && !loading) {
+    return (
+      <div className="bg-[#f6f8f7] w-full min-h-screen flex items-center justify-center px-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center max-w-[400px] w-full">
+          <p className="text-[15px] font-bold text-gray-900">Please login first</p>
+          <p className="text-[13px] text-gray-500 mt-1">You need to login as a student to see your appointment history.</p>
+          <a href="/login" className="inline-block mt-4 px-6 py-2.5 rounded-full bg-[#085041] text-white font-bold text-[12px]">Go to Login</a>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -105,19 +106,20 @@ export default function AppointmentHistory({ showToast }) {
         <div className="max-w-[800px] mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h1 className="text-[32px] md:text-[36px] font-bold text-white leading-none tracking-tight">Appointment History</h1>
-            <p className="text-[13px] text-white/60 mt-2.5">
-              {student.name} • {student.id} • {student.course}
+            <p className="text-[13px] text-white/60 mt-3 flex items-center gap-2 flex-wrap">
+              {[student.name, student.id, student.course].filter(Boolean).join('  |  ')}
             </p>
           </div>
           <div className="flex gap-1.5 p-1 bg-black/20 rounded-full">
-            {['All', 'Pending', 'Approved', 'Cancelled'].map(t => (
+            {FILTERS.map(t => (
               <button key={t} onClick={() => setFilter(t)} className={`text-[12px] font-semibold px-4 py-1.5 rounded-full transition-all ${filter === t ? 'bg-white text-[#085041] shadow-sm' : 'text-white/60 hover:text-white hover:bg-white/10'}`}>
-                {t} {counts[t] > 0 ? `• ${counts[t]}` : ''}
+                {t} {counts[t] > 0 && <span className="ml-1 opacity-60">({counts[t]})</span>}
               </button>
             ))}
           </div>
         </div>
       </div>
+
       <div className="px-4 md:px-10 py-6 max-w-[760px] mx-auto w-full">
         {loading ? (
           <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 h-[120px] animate-pulse" />)}</div>
@@ -139,45 +141,21 @@ export default function AppointmentHistory({ showToast }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-[13px] font-bold text-gray-900">GCO-{item.id}</p>
-                          <span className="text-[11px] text-gray-400">•</span>
-                          <p className="text-[12px] text-gray-600 truncate">{item.consultation_hour} • {item.counselor_name}</p>
-                        </div>
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <p className="text-[13px] font-bold text-gray-900">GCO-{item.id}</p>
+                        <Divider />
+                        <p className="text-[12px] text-gray-600 truncate">{item.consultation_hour} <span className="mx-1 text-gray-300">|</span> {item.counselor_name || 'To be assigned'}</p>
                       </div>
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_STYLES[item.status] || STATUS_STYLES.Pending}`}>{item.status}</span>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_STYLES[isPending(item.status) ? 'Pending' : item.status] || STATUS_STYLES.Pending}`}>{isPending(item.status) ? 'Pending' : item.status}</span>
                     </div>
-
-                    {/* [ADD - URGENCY] - Badge lang */}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${URGENCY_STYLES[urgency] || URGENCY_STYLES.Normal}`}>
-                        {urgency === 'Emergency' ? '🚨 Emergency' : urgency === 'Urgent' ? '⚠️ Urgent' : 'Normal'}
-                      </span>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${URGENCY_STYLES[urgency] || URGENCY_STYLES.Normal}`}>{URGENCY_LABEL[urgency] || 'Normal'}</span>
                       {urgency === 'Emergency' && <span className="text-[11px] text-red-600 font-medium">Prioritized by GCO</span>}
                     </div>
-
-                    <p className="text-[12px] text-gray-600 mt-2 leading-relaxed bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-                      {item.reason || 'No reason provided'}
-                    </p>
-
-                    {/* [ADD - URGENCY] - Emergency contact, pag Emergency lang lalabas */}
-                    {urgency === 'Emergency' && item.emergency_contact_name && (
-                      <div className="mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                        <p className="text-[11px] font-bold text-red-700">Emergency Contact</p>
-                        <p className="text-[11px] text-gray-700 mt-0.5">
-                          {item.emergency_contact_name}
-                          {item.emergency_contact_relation ? ` • ${item.emergency_contact_relation}` : ''}
-                          {item.emergency_contact_no ? ` • ${item.emergency_contact_no}` : ''}
-                        </p>
-                      </div>
+                    <p className="text-[12px] text-gray-600 mt-2 leading-relaxed bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">{item.reason || 'No reason provided'}</p>
+                    {isPending(item.status) && (
+                      <button onClick={() => cancelBooking(item.id)} className="mt-3 text-[11px] font-semibold text-gray-500 hover:text-red-600 transition-colors">Cancel appointment →</button>
                     )}
-
-                    {item.status === 'Pending' || item.status === 'Booked' ? (
-                      <button onClick={() => cancelBooking(item.id)} className="mt-3 text-[11px] font-semibold text-gray-500 hover:text-red-600 transition-colors">
-                        Cancel appointment →
-                      </button>
-                    ) : null}
                   </div>
                 </div>
               )
@@ -186,13 +164,12 @@ export default function AppointmentHistory({ showToast }) {
         )}
       </div>
 
-      {/* MODAL - CLEAN */}
-      {showNotice && (
+      {notice.show && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-2xl p-6 max-w-[340px] w-full shadow-xl border border-gray-100">
             <div className="w-8 h-8 rounded-full bg-[#085041] text-white flex items-center justify-center text-[12px] font-bold">✓</div>
-            <p className="text-[13px] text-gray-700 mt-3 leading-relaxed">{noticeMsg}</p>
-            <button onClick={() => setShowNotice(false)} className="w-full mt-4 py-2.5 rounded-full bg-[#085041] text-white font-bold text-[12px]">Got it</button>
+            <p className="text-[13px] text-gray-700 mt-3 leading-relaxed">{notice.msg}</p>
+            <button onClick={() => setNotice(n => ({ ...n, show: false }))} className="w-full mt-4 py-2.5 rounded-full bg-[#085041] text-white font-bold text-[12px]">Got it</button>
           </div>
         </div>
       )}
