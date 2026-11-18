@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-// LOCAL: D:\xampp\htdocs\gco-api
 const API = 'http://localhost/gco-api'
-// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
-// const API = 'https://gco-api.infinityfreeapp.com'
 
 function Icon({ name, className }) {
   const paths = {
@@ -21,7 +18,9 @@ function Icon({ name, className }) {
   )
 }
 
-function normalizeStatus(v) { return String(v || '').toLowerCase().replace(/_/g, ' ').trim() }
+function normalizeStatus(v) {
+  return String(v || '').toLowerCase().replace(/_/g, ' ').trim()
+}
 
 function normalizeFlag(v) {
   const s = String(v || '').toLowerCase()
@@ -37,13 +36,6 @@ function formatDate(d) {
   return dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function formatTime(d) {
-  if (!d) return ''
-  const dt = new Date(d)
-  if (isNaN(dt)) return ''
-  return dt.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
-}
-
 function getGreeting() {
   const hour = new Date().getHours()
   if (hour >= 5 && hour < 12) return 'Good morning'
@@ -57,7 +49,9 @@ async function getJSON(url) {
     if (!r.ok) return []
     const j = await r.json()
     return Array.isArray(j) ? j : (j.data || j.results || [])
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 function buildNameMap(studentsList) {
@@ -81,6 +75,11 @@ function resolveName(row, nameMap) {
   if (id && nameMap && nameMap.has(id)) return nameMap.get(id)
   if (id) return `Student ${id}`
   return 'Student'
+}
+
+// Join parts with —, skip empty parts so no trailing separator
+function joinParts(...parts) {
+  return parts.filter(Boolean).join(' — ')
 }
 
 export default function Overview({ setView }) {
@@ -138,7 +137,7 @@ export default function Overview({ setView }) {
       items.push({
         key: `a-${a.appointment_id || a.id}`,
         title: `${resolveName(a, nameMap)} booked an appointment`,
-        sub: `${a.reason || a.purpose || 'General consultation'} • ${formatDate(a.created_at || a.date)}`,
+        sub: joinParts(a.reason || a.purpose || 'General consultation', formatDate(a.created_at || a.date)),
         badge: normalizeStatus(a.status) === 'pending' ? 'Pending' : 'Reviewed',
         badgeClass: normalizeStatus(a.status) === 'pending' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700',
         view: 'appointments',
@@ -150,7 +149,7 @@ export default function Overview({ setView }) {
       items.push({
         key: `r-${r.result_id || r.id}`,
         title: `${resolveName(r, nameMap)} completed ${r.exam_type || 'Assessment'}`,
-        sub: `${r.result_label || ''} • ${formatDate(r.date_taken)}`,
+        sub: joinParts(r.result_label || '', formatDate(r.date_taken)),
         badge: flag === 'needs-attention' ? 'Needs Attention' : flag === 'monitor' ? 'Monitor' : 'Normal',
         badgeClass: flag === 'needs-attention' ? 'bg-red-50 text-red-700' : flag === 'monitor' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700',
         view: 'assessment',
@@ -161,7 +160,7 @@ export default function Overview({ setView }) {
       items.push({
         key: `i-${i.submission_id || i.id}`,
         title: `${resolveName(i, nameMap)} submitted an inventory form`,
-        sub: `${formatDate(i.submitted_at || i.created_at)}`,
+        sub: formatDate(i.submitted_at || i.created_at),
         badge: 'New',
         badgeClass: 'bg-blue-50 text-blue-700',
         view: 'inventory',
@@ -174,13 +173,28 @@ export default function Overview({ setView }) {
   const focusList = useMemo(() => {
     const out = []
     for (const a of emergencyPending.slice(0, 3)) {
-      out.push({ key: `f-a-${a.appointment_id || a.id}`, title: `Review emergency request from ${resolveName(a, nameMap)}`, sub: `${a.reason || 'Emergency'} • ${formatDate(a.appointment_date || a.date)}`, view: 'appointments' })
+      out.push({
+        key: `f-a-${a.appointment_id || a.id}`,
+        title: `Review emergency request from ${resolveName(a, nameMap)}`,
+        sub: joinParts(a.reason || 'Emergency', formatDate(a.appointment_date || a.date)),
+        view: 'appointments'
+      })
     }
     for (const r of needsAttention.slice(0, 3)) {
-      out.push({ key: `f-r-${r.result_id || r.id}`, title: `Follow up with ${resolveName(r, nameMap)}`, sub: `${r.exam_type || 'Assessment'} • ${r.result_label || ''}`, view: 'assessment' })
+      out.push({
+        key: `f-r-${r.result_id || r.id}`,
+        title: `Follow up with ${resolveName(r, nameMap)}`,
+        sub: joinParts(r.exam_type || 'Assessment', r.result_label || ''),
+        view: 'assessment'
+      })
     }
     for (const i of pendingReviews.slice(0, 3)) {
-      out.push({ key: `f-i-${i.submission_id || i.id}`, title: `Review inventory from ${resolveName(i, nameMap)}`, sub: `${formatDate(i.submitted_at || i.created_at)}`, view: 'inventory' })
+      out.push({
+        key: `f-i-${i.submission_id || i.id}`,
+        title: `Review inventory from ${resolveName(i, nameMap)}`,
+        sub: formatDate(i.submitted_at || i.created_at),
+        view: 'inventory'
+      })
     }
     return out.slice(0, 5)
   }, [emergencyPending, needsAttention, pendingReviews, nameMap])
@@ -248,7 +262,7 @@ export default function Overview({ setView }) {
           </div>
           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-[12px] text-gray-500">
             <Icon name="check" className="w-4 h-4 text-emerald-600" />
-            <span>{needsAttention.length} needs attention • {monitor.length} under monitoring</span>
+            <span>{needsAttention.length} needs attention — {monitor.length} under monitoring</span>
           </div>
         </div>
       </div>

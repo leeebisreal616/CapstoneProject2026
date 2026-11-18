@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 
-// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
-// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
-// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 const catLabel = {
   academic: 'Academic',
@@ -22,9 +19,9 @@ const Icon = {
   plus: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}><path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   modules: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M12 6.5a9.5 9.5 0 109.5 9.5A9.51 9.51 0 0012 6.5zM12 16.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9z" strokeLinecap="round" strokeLinejoin="round" /></svg>,
   search: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+  link: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M10 14a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.5 1.5M14 10a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.5-1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>,
 }
 
-// Puting Modal — pamalit sa confirm() / alert(). Same style sa Appointments v4.
 function ConfirmModal({ title, message, confirmLabel, isDanger, onCancel, onConfirm }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/40 backdrop-blur-[2px]" onClick={(e) => e.target === e.currentTarget && onCancel()}>
@@ -40,6 +37,8 @@ function ConfirmModal({ title, message, confirmLabel, isDanger, onCancel, onConf
   )
 }
 
+const emptyForm = { category: 'academic', title: '', description: '', status: 'active', link: '', source: '' }
+
 export default function ModulesManagement() {
   const [modules, setModules] = useState([])
   const [filter, setFilter] = useState('all')
@@ -48,74 +47,141 @@ export default function ModulesManagement() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ category: 'academic', title: '', description: '', status: 'active' })
+  const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState('')
   const [pageError, setPageError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [confirmArchive, setConfirmArchive] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [fetchingLink, setFetchingLink] = useState(false)
 
   const fetchModules = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${BASE}/modules/get_modules.php`)
+      setPageError('')
+      const res = await fetch(`${BASE}/modules/get_modules.php?all=1`)
       const data = await res.json()
       const list = Array.isArray(data) ? data : data.data || data.result || []
       const normalized = list.map(m => ({
         ...m,
-        category: String(m.category || m.c || 'academic').toLowerCase(),
-        status: String(m.status || 'active').toLowerCase(),
-        title: m.title || m.t || '',
-        description: m.description || m.content || m.d || ''
+        id: m.id || m.module_id,
+        category: String(m.category || 'academic').toLowerCase(),
+        status: String(m.status || (m.is_active == 1 ? 'active' : 'archived')).toLowerCase(),
+        title: m.title || '',
+        description: m.description || m.content || '',
+        link: m.link || '',
+        source: m.source || '',
       }))
       setModules(normalized)
-    } catch (e) { setModules([]) } finally { setLoading(false) }
+    } catch (e) {
+      setModules([])
+      setPageError('Cannot connect to server. Check if XAMPP (Apache) is running.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchModules() }, [])
 
+  const handleLinkChange = async (url) => {
+    setForm(prev => ({ ...prev, link: url }))
+    if (!url.startsWith('http')) return
+    setFetchingLink(true)
+    try {
+      const res = await fetch(`${BASE}/modules/fetch_metadata.php?url=${encodeURIComponent(url)}`)
+      const data = await res.json()
+      if (data.success) {
+        setForm(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          description: data.description || prev.description,
+          category: data.category || prev.category,
+          source: data.source || prev.source,
+        }))
+      }
+    } catch { /* manual pa rin kung mag-fail */ }
+    finally { setFetchingLink(false) }
+  }
+
   const handleSave = async () => {
-    if (!form.title.trim() || !form.description.trim()) { setFormError('Please complete the title and description.'); return }
+    if (!form.title.trim()) { setFormError('Please complete the title.'); return }
+    // [FIX] Pag may link, hindi na required yung description. Pag walang link, required pa rin.
+    if (!form.link.trim() && !form.description.trim()) { setFormError('Please complete the description or add a source link.'); return }
+    if (form.link && !form.link.startsWith('http')) { setFormError('Link must start with http:// or https://'); return }
     setFormError('')
+    setSaving(true)
     try {
       const endpoint = editing ? `${BASE}/modules/update_module.php` : `${BASE}/modules/create_module.php`
       const payload = editing ? { id: editing.id, ...form } : form
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
       const result = await res.json()
-      if (result.success === false) { setFormError('Failed to save module: ' + (result.message || 'Please check the server.')); return }
+      if (result.success === false) {
+        setFormError('Failed to save module: ' + (result.message || 'Please check the server.'))
+        return
+      }
       setShowForm(false)
       setEditing(null)
-      setForm({ category: 'academic', title: '', description: '', status: 'active' })
+      setForm(emptyForm)
       fetchModules()
-    } catch (err) { setFormError('Failed to save module. Please check create_module.php or update_module.php.') }
+    } catch (err) {
+      setFormError('Failed to save module. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  // NGAYON: hindi na confirm(), bubukas lang ng Modal
   const handleDelete = (item) => { setConfirmDelete(item) }
+
   const confirmDeleteModule = async () => {
     if (!confirmDelete) return
     try {
-      await fetch(`${BASE}/modules/delete_module.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmDelete.id }) })
+      await fetch(`${BASE}/modules/delete_module.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmDelete.id })
+      })
       setConfirmDelete(null)
       fetchModules()
-    } catch { setConfirmDelete(null); setPageError('Failed to delete module.') }
+    } catch {
+      setConfirmDelete(null)
+      setPageError('Failed to delete module.')
+    }
   }
 
-  // NGAYON: may confirm na rin, hindi na biglaang archive
   const handleArchive = (item) => { setConfirmArchive(item) }
+
   const confirmArchiveModule = async () => {
     if (!confirmArchive) return
     const newStatus = confirmArchive.status === 'archived' ? 'active' : 'archived'
     try {
-      await fetch(`${BASE}/modules/update_module.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmArchive.id, category: confirmArchive.category, title: confirmArchive.title, description: confirmArchive.description, status: newStatus }) })
+      await fetch(`${BASE}/modules/update_module.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmArchive.id, category: confirmArchive.category, title: confirmArchive.title, description: confirmArchive.description, status: newStatus, link: confirmArchive.link || '', source: confirmArchive.source || '' })
+      })
       setConfirmArchive(null)
       fetchModules()
-    } catch { setConfirmArchive(null); setPageError('Failed to update module status.') }
+    } catch {
+      setConfirmArchive(null)
+      setPageError('Failed to update module status.')
+    }
   }
 
   const startEdit = (item) => {
     setEditing(item)
     setFormError('')
-    setForm({ category: String(item.category || 'academic').toLowerCase(), title: item.title || '', description: item.description || '', status: String(item.status || 'active').toLowerCase() })
+    setForm({
+      category: String(item.category || 'academic').toLowerCase(),
+      title: item.title || '',
+      description: item.description || '',
+      status: String(item.status || 'active').toLowerCase(),
+      link: item.link || '',
+      source: item.source || '',
+    })
     setShowForm(true)
   }
 
@@ -130,14 +196,12 @@ export default function ModulesManagement() {
   const filtered = useMemo(() => {
     let list = filter === 'all' ? modules : modules.filter(m => m.category === filter)
     if (statusFilter !== 'all') list = list.filter(m => m.status === statusFilter)
-    if (search.trim()) list = list.filter(m => m.title.toLowerCase().includes(search.trim().toLowerCase()) || m.description.toLowerCase().includes(search.trim().toLowerCase()))
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(m => m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q) || (m.source || '').toLowerCase().includes(q))
+    }
     return list
   }, [modules, filter, statusFilter, search])
-
-  const isTestData = (m) => {
-    const t = (m.title + ' ' + m.description).toLowerCase()
-    return t.length < 10 || ['wwwe', 'wewew', 'wews', 'try lang', 'test', 'asdf'].some(w => t.includes(w))
-  }
 
   if (loading) return <div className="p-6 text-[13px] text-gray-400">Loading modules...</div>
 
@@ -146,11 +210,11 @@ export default function ModulesManagement() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-extrabold text-gray-900 tracking-tight leading-tight">Modules Management</h1>
-          <p className="text-[12.5px] text-gray-500 mt-0.5">{stats.total} modules • {stats.active} active • Visible to students</p>
+          <p className="text-[12.5px] text-gray-500 mt-0.5">{stats.total} modules — {stats.active} active — Visible to students</p>
         </div>
         <div className="flex gap-2">
           <button onClick={fetchModules} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
-          <button onClick={() => { setEditing(null); setFormError(''); setForm({ category: 'academic', title: '', description: '', status: 'active' }); setShowForm(true) }} className="bg-[#085041] text-white px-4 py-2 rounded-full text-[12px] font-bold flex items-center gap-1.5 shadow-sm hover:bg-[#06382D]">{Icon.plus('w-3.5 h-3.5')} Add Module</button>
+          <button onClick={() => { setEditing(null); setFormError(''); setForm(emptyForm); setShowForm(true) }} className="bg-[#085041] text-white px-4 py-2 rounded-full text-[12px] font-bold flex items-center gap-1.5 shadow-sm hover:bg-[#06382D]">{Icon.plus('w-3.5 h-3.5')} Add Module</button>
         </div>
       </div>
 
@@ -186,21 +250,23 @@ export default function ModulesManagement() {
             <div className="w-12 h-12 rounded-[14px] bg-[#F4F7F5] border border-gray-100 flex items-center justify-center mx-auto mb-3 text-gray-400">{Icon.modules('w-6 h-6')}</div>
             <p className="text-[14px] font-bold text-gray-900">No modules yet</p>
             <p className="text-[12px] text-gray-500 mt-1">Create a module to make it available to students.</p>
-            <button onClick={() => { setEditing(null); setFormError(''); setForm({ category: 'academic', title: '', description: '', status: 'active' }); setShowForm(true) }} className="mt-4 bg-[#085041] text-white px-5 py-2 rounded-full text-[12px] font-bold flex items-center gap-1.5 mx-auto">{Icon.plus('w-3.5 h-3.5')} Add First Module</button>
+            <button onClick={() => { setEditing(null); setFormError(''); setForm(emptyForm); setShowForm(true) }} className="mt-4 bg-[#085041] text-white px-5 py-2 rounded-full text-[12px] font-bold flex items-center gap-1.5 mx-auto">{Icon.plus('w-3.5 h-3.5')} Add First Module</button>
           </div>
         )}
         {filtered.map(m => (
           <div key={m.id} className={`bg-white border border-gray-100 rounded-[20px] p-5 flex flex-col shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${m.status === 'archived' ? 'opacity-60 bg-gray-50' : ''}`}>
             <div className="flex justify-between items-start mb-3 gap-2">
-              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${catStyle[m.category] || 'bg-gray-100 border-gray-200'}`}>{catLabel[m.category] || m.category}</span>
-              <div className="flex gap-1.5">
-                {isTestData(m) && <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Possible test data</span>}
-                <span className={`text-[10px] font-bold px-2 py-1 rounded-full border capitalize ${m.status === 'archived' ? 'bg-gray-200 text-gray-600 border-gray-200' : 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]'}`}>{m.status}</span>
-              </div>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${catStyle[m.category] || 'bg-gray-100 border-gray-200'}`}>{catLabel[m.category] || m.category}</span>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full border capitalize whitespace-nowrap ${m.status === 'archived' ? 'bg-gray-200 text-gray-600 border-gray-200' : 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]'}`}>{m.status}</span>
             </div>
             <div className="w-10 h-10 rounded-[12px] bg-[#E8F5F1] flex items-center justify-center text-[#085041] mb-3">{Icon.modules('w-5 h-5')}</div>
             <h4 className="text-[15px] font-bold text-gray-900 leading-snug">{m.title}</h4>
             <p className="text-[13px] text-gray-500 mt-1.5 flex-1 leading-relaxed line-clamp-3">{m.description}</p>
+            {m.link && (
+              <a href={m.link} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-bold text-[#085041] hover:underline w-fit">
+                {Icon.link('w-3.5 h-3.5')} {m.source || 'View Resource'}
+              </a>
+            )}
             <div className="flex gap-2 mt-5">
               <button onClick={() => startEdit(m)} className="flex-1 bg-gray-900 text-white text-[12px] font-bold px-3 py-2 rounded-full hover:bg-black">Edit</button>
               <button onClick={() => handleArchive(m)} className="flex-1 bg-white border border-gray-200 text-gray-600 text-[12px] font-bold px-3 py-2 rounded-full hover:border-gray-300">{m.status === 'archived' ? 'Unarchive' : 'Archive'}</button>
@@ -212,18 +278,24 @@ export default function ModulesManagement() {
 
       {showForm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/40 backdrop-blur-[2px]" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="bg-white rounded-[20px] p-6 w-full max-w-md shadow-2xl">
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[16px] font-bold text-gray-900 tracking-tight">{editing ? 'Edit Module' : 'Add New Module'}</p>
               <button onClick={() => setShowForm(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">{Icon.x('w-4 h-4')}</button>
             </div>
             <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Source Link</label>
+                <input value={form.link} onChange={e => handleLinkChange(e.target.value)} placeholder="Paste link e.g. https://www.who.int/..." className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#085041]" />
+                {fetchingLink && <p className="text-[11px] text-[#085041] mt-1.5">Fetching details from link...</p>}
+                {form.source && !fetchingLink && <p className="text-[11px] text-gray-400 mt-1.5">Source: {form.source} — You can still edit title and description below.</p>}
+              </div>
               <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Category</label><select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] bg-white outline-none focus:border-[#085041]"><option value="academic">Academic</option><option value="social">Personal-Social-Emotional</option><option value="career">Career</option></select></div>
-              <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Title</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title e.g. Study Skills" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#085041]" /></div>
-              <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Description</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Enter a description for this module" rows={4} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] resize-none outline-none focus:border-[#085041]" /></div>
+              <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Title</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title e.g. Managing Stress" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#085041]" /></div>
+              <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Description {form.link ? '(Optional)' : ''}</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={form.link ? "Optional if you added a link above — auto-filled if available" : "Enter a description for this module"} rows={4} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] resize-none outline-none focus:border-[#085041]" /></div>
               {formError && <p className="bg-red-50 border border-red-200 text-red-700 text-[12px] font-medium px-3 py-2 rounded-xl">{formError}</p>}
               <div className="flex gap-2 mt-2">
-                <button onClick={handleSave} className="flex-1 bg-[#085041] text-white py-3 rounded-full text-[13px] font-bold hover:bg-[#06382D]">{editing ? 'Update Module' : 'Create Module'}</button>
+                <button onClick={handleSave} disabled={saving} className="flex-1 bg-[#085041] text-white py-3 rounded-full text-[13px] font-bold hover:bg-[#06382D] disabled:opacity-60">{saving ? 'Saving...' : editing ? 'Update Module' : 'Create Module'}</button>
                 <button onClick={() => setShowForm(false)} className="px-5 border border-gray-200 rounded-full text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
               </div>
             </div>

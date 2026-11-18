@@ -1,14 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
 
-// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
-// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
-// const BASE = 'https://gco-api.infinityfreeapp.com'
+
+function formatDate(d) {
+  if (!d) return ''
+  const dt = new Date(d)
+  if (isNaN(dt)) return ''
+  return dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 function Badge({ status }) {
   const isPublished = String(status || '').toLowerCase() === 'published'
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border ${isPublished ? 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${isPublished ? 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${isPublished ? 'bg-[#085041]' : 'bg-gray-400'}`} />
       {isPublished ? 'Published' : 'Draft'}
     </span>
@@ -22,7 +26,6 @@ const Icon = {
   search: (c) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.75 3.75a7.5 7.5 0 0012.9 12.9z" strokeLinecap="round" strokeLinejoin="round" /></svg>,
 }
 
-// Puting Modal — pamalit sa confirm() / alert(). Same style sa Appointments v4 at Modules v2.
 function ConfirmModal({ title, message, confirmLabel, isDanger, onCancel, onConfirm }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/40 backdrop-blur-[2px]" onClick={(e) => e.target === e.currentTarget && onCancel()}>
@@ -49,11 +52,13 @@ export default function AnnouncementsManagement() {
   const [pageError, setPageError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [confirmToggle, setConfirmToggle] = useState(null)
+  const [saving, setSaving] = useState(false)
 
   const fetchLive = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`${BASE}/announcements/get_announcements.php`)
+      setPageError('')
+      const res = await fetch(`${BASE}/announcements/get_announcements.php?all=1`)
       const data = await res.json()
       const list = Array.isArray(data) ? data : data.announcements || data.data || data.result || []
       const mapped = list.map(row => ({
@@ -65,7 +70,12 @@ export default function AnnouncementsManagement() {
         raw: row,
       }))
       setAnnouncements(mapped.sort((a, b) => new Date(b.date) - new Date(a.date)))
-    } catch (e) { setAnnouncements([]) } finally { setLoading(false) }
+    } catch (e) {
+      setAnnouncements([])
+      setPageError('Cannot connect to server. Check if XAMPP (Apache) is running.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchLive() }, [])
@@ -75,6 +85,7 @@ export default function AnnouncementsManagement() {
     if (!form.title.trim()) { setFormError('Please enter a title.'); return }
     if (!form.desc.trim()) { setFormError('Please enter a description.'); return }
     setFormError('')
+    setSaving(true)
     try {
       const res = editing
         ? await fetch(`${BASE}/announcements/update_announcement.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editing.id, announcement_id: editing.id, title: form.title, description: form.desc, status: statusToSave }) })
@@ -84,30 +95,48 @@ export default function AnnouncementsManagement() {
       setForm({ title: '', desc: '', status: 'Draft' })
       setEditing(null)
       fetchLive()
-    } catch (err) { setFormError('Failed to save announcement. Please check create_announcement.php or update_announcement.php.') }
+    } catch (err) {
+      setFormError('Failed to save announcement. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  // NGAYON: hindi na biglaang Publish / Unpublish — may Modal muna
   const handleToggle = (item) => { setConfirmToggle(item) }
+
   const confirmToggleAnnouncement = async () => {
     if (!confirmToggle) return
     const newStatus = (confirmToggle.status || '').toLowerCase() === 'published' ? 'Draft' : 'Published'
     try {
-      await fetch(`${BASE}/announcements/update_announcement.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmToggle.id, announcement_id: confirmToggle.id, title: confirmToggle.title, description: confirmToggle.desc, status: newStatus }) })
+      await fetch(`${BASE}/announcements/update_announcement.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmToggle.id, announcement_id: confirmToggle.id, title: confirmToggle.title, description: confirmToggle.desc, status: newStatus })
+      })
       setConfirmToggle(null)
       fetchLive()
-    } catch { setConfirmToggle(null); setPageError('Failed to update announcement status.') }
+    } catch {
+      setConfirmToggle(null)
+      setPageError('Failed to update announcement status.')
+    }
   }
 
-  // NGAYON: hindi na confirm(), bubukas lang ng Modal
   const handleDelete = (item) => { setConfirmDelete(item) }
+
   const confirmDeleteAnnouncement = async () => {
     if (!confirmDelete) return
     try {
-      await fetch(`${BASE}/announcements/delete_announcement.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: confirmDelete.id, announcement_id: confirmDelete.id }) })
+      await fetch(`${BASE}/announcements/delete_announcement.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: confirmDelete.id, announcement_id: confirmDelete.id })
+      })
       setConfirmDelete(null)
       fetchLive()
-    } catch { setConfirmDelete(null); setPageError('Failed to delete announcement.') }
+    } catch {
+      setConfirmDelete(null)
+      setPageError('Failed to delete announcement.')
+    }
   }
 
   const handleEdit = (item) => {
@@ -115,11 +144,6 @@ export default function AnnouncementsManagement() {
     setFormError('')
     setForm({ title: item.title, desc: item.desc, status: item.status })
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const isTestData = (a) => {
-    const t = `${a.title || ''} ${a.desc || ''}`.toLowerCase()
-    return t.length < 10 || ['wwwe', 'wewew', 'wews', 'try lang', 'test', 'asdf'].some(w => t.includes(w))
   }
 
   const stats = useMemo(() => ({
@@ -130,7 +154,10 @@ export default function AnnouncementsManagement() {
 
   const filtered = useMemo(() => {
     let list = filter === 'all' ? announcements : filter === 'published' ? announcements.filter(a => (a.status || '').toLowerCase() === 'published') : announcements.filter(a => (a.status || '').toLowerCase() !== 'published')
-    if (search.trim()) list = list.filter(a => a.title.toLowerCase().includes(search.trim().toLowerCase()) || (a.desc || '').toLowerCase().includes(search.trim().toLowerCase()))
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(a => a.title.toLowerCase().includes(q) || (a.desc || '').toLowerCase().includes(q))
+    }
     return list
   }, [announcements, filter, search])
 
@@ -141,14 +168,14 @@ export default function AnnouncementsManagement() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-extrabold text-gray-900 tracking-tight leading-tight">Announcements</h1>
-          <p className="text-[12.5px] text-gray-500 mt-0.5">{stats.total} total • <span className="text-[#085041] font-bold">{stats.published} Published</span> = visible on Home • {stats.draft} Draft = hidden</p>
+          <p className="text-[12.5px] text-gray-500 mt-0.5">{stats.total} total — <span className="text-[#085041] font-bold">{stats.published} Published</span> — Visible on Home — {stats.draft} Draft — Hidden</p>
         </div>
         <button onClick={fetchLive} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
       </div>
 
       {pageError && <div className="bg-red-50 border border-red-200 text-red-700 text-[12.5px] font-medium px-4 py-2.5 rounded-[14px]">{pageError} <button onClick={() => setPageError('')} className="ml-2 font-bold underline">Dismiss</button></div>}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button onClick={() => setFilter('all')} className={`bg-white border border-gray-100 rounded-[20px] p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${filter === 'all' ? 'ring-2 ring-[#085041]/20 border-[#085041]/30' : ''}`}><p className="text-[24px] font-extrabold text-gray-900 leading-none">{stats.total}</p><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase mt-1.5">Total</p></button>
         <button onClick={() => setFilter('published')} className={`bg-white border border-gray-100 rounded-[20px] p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${filter === 'published' ? 'ring-2 ring-[#085041]/20 border-[#085041]/30' : ''}`}><p className="text-[24px] font-extrabold text-[#085041] leading-none">{stats.published}</p><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase mt-1.5">Published</p></button>
         <button onClick={() => setFilter('draft')} className={`bg-white border border-gray-100 rounded-[20px] p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${filter === 'draft' ? 'ring-2 ring-gray-400/30 border-gray-400/40' : ''}`}><p className="text-[24px] font-extrabold text-gray-500 leading-none">{stats.draft}</p><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase mt-1.5">Draft</p></button>
@@ -182,11 +209,10 @@ export default function AnnouncementsManagement() {
               <div key={a.id} className="bg-white border border-gray-100 rounded-[20px] p-5 flex gap-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
                 <div className="w-10 h-10 rounded-[12px] bg-[#E8F5F1] flex items-center justify-center text-[#085041] shrink-0">{Icon.megaphone('w-5 h-5')}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap"><p className="text-[14px] font-bold text-gray-900 truncate">{a.title}</p><Badge status={a.status} />{isTestData(a) && <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">Possible test data</span>}</div>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap"><p className="text-[14px] font-bold text-gray-900 truncate">{a.title}</p><Badge status={a.status} /></div>
                   <p className="text-[13px] text-gray-600 leading-relaxed line-clamp-2">{a.desc}</p>
                   <p className="text-[11px] text-gray-400 mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">{a.date ? new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
-                    <span>ID: {a.id}</span>
+                    <span className="bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">{formatDate(a.date)}</span>
                     <span>{isPub ? 'Visible to students on Home' : 'Hidden — Admin only'}</span>
                   </p>
                 </div>
@@ -205,25 +231,24 @@ export default function AnnouncementsManagement() {
             <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 ${editing ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-[#E8F5F1] text-[#085041] border border-[#9FE1CB]'}`}>{Icon.megaphone('w-5 h-5')}</div>
             <div className="min-w-0">
               <p className="text-[15px] font-bold text-gray-900">{editing ? 'Edit Announcement' : 'Create Announcement'}</p>
-              <p className="text-[11px] text-gray-500">{editing ? `Editing ID: ${editing.id} • Status: ${editing.status}` : 'Draft = hidden • Published = visible on Home'}</p>
+              <p className="text-[11px] text-gray-500">{editing ? `Editing — Status: ${editing.status}` : 'Draft — Hidden — Published — Visible on Home'}</p>
             </div>
             {editing && <button onClick={() => { setEditing(null); setFormError(''); setForm({ title: '', desc: '', status: 'Draft' }) }} className="ml-auto w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">{Icon.x('w-4 h-4')}</button>}
           </div>
-
           <div className="flex flex-col gap-3">
             <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Title</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Title e.g. No Walk-in Sessions This Week" className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#085041]" /></div>
             <div><label className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1.5 block">Description</label><textarea value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} placeholder="Enter the announcement description" rows={4} className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-[13px] outline-none focus:border-[#085041] resize-none" /></div>
             {formError && <p className="bg-red-50 border border-red-200 text-red-700 text-[12px] font-medium px-3 py-2 rounded-xl">{formError}</p>}
             {editing ? (
               <div className="flex gap-2">
-                <button onClick={() => handleSave(editing.status)} className="flex-1 bg-[#085041] text-white py-2.5 rounded-full text-[13px] font-bold hover:bg-[#06382D]">Save Changes</button>
+                <button onClick={() => handleSave(editing.status)} disabled={saving} className="flex-1 bg-[#085041] text-white py-2.5 rounded-full text-[13px] font-bold hover:bg-[#06382D] disabled:opacity-60">{saving ? 'Saving...' : 'Save Changes'}</button>
                 <button onClick={() => { setEditing(null); setFormError(''); setForm({ title: '', desc: '', status: 'Draft' }) }} className="px-4 border border-gray-200 rounded-full text-[13px] font-bold text-gray-600">Cancel</button>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <button onClick={() => handleSave('Published')} className="w-full bg-[#085041] text-white py-2.5 rounded-full text-[13px] font-bold flex items-center justify-center gap-1.5 hover:bg-[#06382D]">{Icon.plus('w-4 h-4')} Publish Now</button>
-                <button onClick={() => handleSave('Draft')} className="w-full bg-white border border-gray-300 text-gray-700 py-2.5 rounded-full text-[13px] font-bold hover:border-gray-400">Save as Draft</button>
-                <p className="text-[11px] text-gray-400 text-center">Draft = hidden from students • Publish = visible on Home</p>
+                <button onClick={() => handleSave('Published')} disabled={saving} className="w-full bg-[#085041] text-white py-2.5 rounded-full text-[13px] font-bold flex items-center justify-center gap-1.5 hover:bg-[#06382D] disabled:opacity-60">{Icon.plus('w-4 h-4')} {saving ? 'Saving...' : 'Publish Now'}</button>
+                <button onClick={() => handleSave('Draft')} disabled={saving} className="w-full bg-white border border-gray-300 text-gray-700 py-2.5 rounded-full text-[13px] font-bold hover:border-gray-400 disabled:opacity-60">{saving ? 'Saving...' : 'Save as Draft'}</button>
+                <p className="text-[11px] text-gray-400 text-center">Draft — Hidden from students — Publish — Visible on Home</p>
               </div>
             )}
           </div>
@@ -231,25 +256,11 @@ export default function AnnouncementsManagement() {
       </div>
 
       {confirmToggle && (
-        <ConfirmModal
-          title={(confirmToggle.status || '').toLowerCase() === 'published' ? 'Unpublish Announcement?' : 'Publish Announcement?'}
-          message={(confirmToggle.status || '').toLowerCase() === 'published' ? `Unpublish "${confirmToggle.title}"? It will be hidden from students.` : `Publish "${confirmToggle.title}"? It will be visible to students on Home.`}
-          confirmLabel={(confirmToggle.status || '').toLowerCase() === 'published' ? 'Unpublish' : 'Publish'}
-          isDanger={false}
-          onCancel={() => setConfirmToggle(null)}
-          onConfirm={confirmToggleAnnouncement}
-        />
+        <ConfirmModal title={(confirmToggle.status || '').toLowerCase() === 'published' ? 'Unpublish Announcement?' : 'Publish Announcement?'} message={(confirmToggle.status || '').toLowerCase() === 'published' ? `Unpublish "${confirmToggle.title}"? It will be hidden from students.` : `Publish "${confirmToggle.title}"? It will be visible to students on Home.`} confirmLabel={(confirmToggle.status || '').toLowerCase() === 'published' ? 'Unpublish' : 'Publish'} isDanger={false} onCancel={() => setConfirmToggle(null)} onConfirm={confirmToggleAnnouncement} />
       )}
 
       {confirmDelete && (
-        <ConfirmModal
-          title="Delete Announcement?"
-          message={`Delete "${confirmDelete.title}"? It will no longer be visible to students. This cannot be undone.`}
-          confirmLabel="Delete"
-          isDanger={true}
-          onCancel={() => setConfirmDelete(null)}
-          onConfirm={confirmDeleteAnnouncement}
-        />
+        <ConfirmModal title="Delete Announcement?" message={`Delete "${confirmDelete.title}"? It will no longer be visible to students. This cannot be undone.`} confirmLabel="Delete" isDanger={true} onCancel={() => setConfirmDelete(null)} onConfirm={confirmDeleteAnnouncement} />
       )}
     </div>
   )

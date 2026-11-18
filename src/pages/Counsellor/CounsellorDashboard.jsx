@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { logout } from '../../utils/counsellorAuth'
+import { logout, getCounsellor } from '../../utils/counsellorAuth'
 import Overview from './Overview'
 import Appointments from './Appointments'
 import InventorySubmissions from './Inventory'
@@ -7,7 +7,7 @@ import AssessmentResults from './Assessment'
 import ModulesManagement from './Modules'
 import AnnouncementsManagement from './Announcements'
 import StudentDirectory from './StudentsDirectory'
-import AdminReport from './CounsellorReport'
+import CounsellorReport from './CounsellorReport'
 
 const Icon = {
   overview: (c) => (
@@ -69,17 +69,19 @@ const Icon = {
 }
 
 const navItems = [
-  { id: 'overview', label: 'Dashboard', icon: Icon.overview, group: 'Menu' },
-  { id: 'appointments', label: 'Appointments', icon: Icon.appointments, group: 'Menu' },
-  { id: 'inventory', label: 'Inventory', icon: Icon.inventory, group: 'Menu' },
-  { id: 'assessment', label: 'Assessment Results', icon: Icon.assessment, group: 'Menu' },
-  { id: 'modules', label: 'Modules', icon: Icon.modules, group: 'Menu' },
-  { id: 'announcements', label: 'Announcements', icon: Icon.announcements, group: 'Menu' },
-  { id: 'students', label: 'Students Directory', icon: Icon.students, group: 'Menu' },
-  { id: 'report', label: 'Reports', icon: Icon.report, group: 'Menu' },
+  { id: 'overview', label: 'Dashboard', icon: Icon.overview },
+  { id: 'appointments', label: 'Appointments', icon: Icon.appointments },
+  { id: 'inventory', label: 'Inventory', icon: Icon.inventory },
+  { id: 'assessment', label: 'Assessment Results', icon: Icon.assessment },
+  { id: 'modules', label: 'Modules', icon: Icon.modules },
+  { id: 'announcements', label: 'Announcements', icon: Icon.announcements },
+  { id: 'students', label: 'Students Directory', icon: Icon.students },
+  { id: 'report', label: 'Reports', icon: Icon.report },
 ]
 
-function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout }) {
+function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsellor }) {
+  const initial = (counsellor?.name || counsellor?.username || 'G').charAt(0).toUpperCase()
+
   return (
     <>
       {mobileOpen && (
@@ -92,8 +94,8 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout }) {
             <img src="/gco-seal.png" alt="GCO" className="w-full h-full object-cover" />
           </div>
           <div className="leading-tight">
-            <p className="text-white text-[14px] font-bold tracking-tight">GCO Admin</p>
-            <p className="text-white/50 text-[11px] font-medium">CvSU Imus • Guidance</p>
+            <p className="text-white text-[14px] font-bold tracking-tight">GCO Counsellor</p>
+            <p className="text-white/50 text-[11px] font-medium">CvSU Imus Campus</p>
           </div>
           <button className="ml-auto lg:hidden w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70" onClick={() => setMobileOpen(false)}>
             {Icon.x('w-3.5 h-3.5')}
@@ -119,13 +121,13 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout }) {
           })}
         </div>
 
-        {/* Counselor + Logout */}
+        {/* Counsellor + Logout */}
         <div className="px-3 pb-4 pt-2">
           <div className="bg-white/[0.08] border border-white/10 rounded-[14px] p-3 mb-2 flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#085041] text-[12px] font-bold shrink-0">G</div>
+            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#085041] text-[12px] font-bold shrink-0">{initial}</div>
             <div className="min-w-0 leading-tight">
-              <p className="text-white text-[12.5px] font-semibold truncate">Guidance Counselor</p>
-              <p className="text-white/50 text-[11px] truncate">Admin Portal</p>
+              <p className="text-white text-[12.5px] font-semibold truncate">{counsellor?.name || counsellor?.username || 'Counsellor'}</p>
+              <p className="text-white/50 text-[11px] truncate">Counsellor Portal</p>
             </div>
           </div>
           <button onClick={onLogout} className="flex items-center gap-2.5 text-white/60 text-[12px] font-medium px-3 py-2 rounded-[12px] w-full hover:text-white hover:bg-white/10 transition-colors">
@@ -137,9 +139,11 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout }) {
   )
 }
 
-export default function AdminDashboard({ onLogout }) {
+export default function CounsellorDashboard({ onLogout }) {
   const [view, setView] = useState('overview')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const counsellor = getCounsellor()
+
   const views = {
     overview: <Overview setView={setView} />,
     appointments: <Appointments />,
@@ -148,20 +152,20 @@ export default function AdminDashboard({ onLogout }) {
     modules: <ModulesManagement />,
     announcements: <AnnouncementsManagement />,
     students: <StudentDirectory />,
-    report: <AdminReport />,
+    report: <CounsellorReport />,
   }
+
   return (
     <div className="flex min-h-screen bg-[#F4F7F5] font-sans">
-      <Sidebar view={view} setView={setView} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} onLogout={() => { logout(); onLogout?.() }} />
+      <Sidebar view={view} setView={setView} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} onLogout={() => { logout(); onLogout?.() }} counsellor={counsellor} />
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="lg:hidden sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center gap-2.5">
           <button className="w-9 h-9 rounded-[10px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shadow-sm" onClick={() => setMobileOpen(true)}>
             {Icon.menu('w-4 h-4')}
           </button>
-          <p className="text-[13px] font-bold text-gray-900 tracking-tight">GCO Admin</p>
+          <p className="text-[13px] font-bold text-gray-900 tracking-tight">GCO Counsellor</p>
           <span className="ml-auto text-[11px] text-gray-400 font-medium">CvSU Imus</span>
         </div>
-        {/* Bento canvas - lahat ng pages dito papasok */}
         <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-5 lg:py-6">{views[view]}</div>
       </div>
     </div>

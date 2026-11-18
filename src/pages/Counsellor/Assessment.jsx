@@ -1,9 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
 
-// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
-// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
-// const BASE = 'https://gco-api.infinityfreeapp.com'
+
+function normalizeFlag(v) {
+  const s = String(v || '').toLowerCase()
+  if (s.includes('urgent') || s.includes('attention') || s.includes('critical') || s.includes('high') || s.includes('severe')) return 'urgent'
+  if (s.includes('monitor') || s.includes('watch') || s.includes('moderate')) return 'watch'
+  return 'normal'
+}
+
+function formatDate(d) {
+  if (!d) return 'N/A'
+  const dt = new Date(d)
+  if (isNaN(dt)) return 'N/A'
+  return dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
 function FlagBadge({ flag }) {
   const map = {
@@ -12,7 +23,7 @@ function FlagBadge({ flag }) {
     normal: { text: 'Normal', cls: 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]' },
   }
   const f = map[flag] || map.normal
-  return <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${f.cls}`}>{f.text}</span>
+  return <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${f.cls}`}>{f.text}</span>
 }
 
 const Icon = {
@@ -37,6 +48,7 @@ export default function AssessmentResults() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState('')
 
   const filters = [
     { key: 'all', label: 'All' },
@@ -48,6 +60,7 @@ export default function AssessmentResults() {
   const fetchLive = async () => {
     try {
       setLoading(true)
+      setPageError('')
       const [res, studentsRes] = await Promise.all([
         fetch(`${BASE}/assessment_results/get_results.php?all=1`).then(r => r.json()).catch(() => []),
         fetch(`${BASE}/students/get_students.php?all=1`).then(r => r.json()).catch(() => []),
@@ -57,10 +70,9 @@ export default function AssessmentResults() {
       const nameMap = buildNameMap(studentsList)
       const mapped = rawData.map(row => {
         const score = Number(row.score) || 0
-        const pct = Math.round((score / 40) * 100)
+        const pct = Math.min(100, Math.max(0, Math.round((score / 40) * 100)))
         const label = row.result_label || row.result || row.interpretation || ''
-        const flagRaw = (row.flag_level || row.flag || row.status || 'Normal').toLowerCase()
-        const flag = flagRaw.includes('monitor') || flagRaw.includes('watch') || flagRaw.includes('moderate') ? 'watch' : flagRaw.includes('high') || flagRaw.includes('urgent') || flagRaw.includes('attention') ? 'urgent' : 'normal'
+        const flag = normalizeFlag(row.flag_level || row.flag || row.status)
         const studentId = String(row.student_id || row.studentId || '')
         const resolvedName = row.student_name || row.name || row.full_name || (studentId && nameMap.has(studentId) ? nameMap.get(studentId) : '')
         return {
@@ -68,7 +80,7 @@ export default function AssessmentResults() {
           name: resolvedName || `Student ${studentId}`,
           studentId: studentId,
           exam: row.exam_type || row.exam || row.test_type || 'Assessment',
-          result: label ? `${pct}% - ${label}` : `${pct}%`,
+          result: label ? `${pct}% — ${label}` : `${pct}%`,
           score: score,
           pct: pct,
           label: label,
@@ -78,7 +90,12 @@ export default function AssessmentResults() {
         }
       })
       setResults(mapped.sort((a, b) => new Date(b.date) - new Date(a.date)))
-    } catch (e) { console.error('FETCH ASSESSMENT FAILED', e); setResults([]) } finally { setLoading(false) }
+    } catch (e) {
+      setResults([])
+      setPageError('Cannot connect to server. Check if XAMPP (Apache) is running.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchLive() }, [])
@@ -91,7 +108,10 @@ export default function AssessmentResults() {
 
   const filtered = useMemo(() => {
     let list = filter === 'all' ? results : results.filter(r => r.flag === filter)
-    if (search.trim()) list = list.filter(r => r.name.toLowerCase().includes(search.trim().toLowerCase()) || String(r.studentId).includes(search.trim()))
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(r => r.name.toLowerCase().includes(q) || String(r.studentId).includes(q))
+    }
     return list
   }, [results, filter, search])
 
@@ -102,12 +122,12 @@ export default function AssessmentResults() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-extrabold text-gray-900 tracking-tight leading-tight">Assessment Results</h1>
-          <p className="text-[12.5px] text-gray-500 mt-0.5">{filtered.length} showing • {results.length} total • Confidential under RA 10173</p>
+          <p className="text-[12.5px] text-gray-500 mt-0.5">{filtered.length} showing — {results.length} total — Confidential under RA 10173</p>
         </div>
         <button onClick={fetchLive} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Needs Attention', value: stats.urgent, color: '#B91C1C', bg: 'bg-red-50', border: 'border-red-200', sub: 'Review immediately', key: 'urgent' },
           { label: 'Monitor', value: stats.watch, color: '#B45309', bg: 'bg-amber-50', border: 'border-amber-200', sub: 'Requires monitoring', key: 'watch' },
@@ -121,6 +141,8 @@ export default function AssessmentResults() {
           </button>
         ))}
       </div>
+
+      {pageError && <div className="bg-red-50 border border-red-200 text-red-700 text-[12.5px] font-medium px-4 py-2.5 rounded-[14px]">{pageError} <button onClick={() => setPageError('')} className="ml-2 font-bold underline">Dismiss</button></div>}
 
       <div className="bg-white border border-gray-100 rounded-[20px] p-3.5 flex flex-wrap items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="flex gap-1.5 flex-wrap">
@@ -151,10 +173,10 @@ export default function AssessmentResults() {
               {filtered.map(e => (
                 <tr key={e.id} className={`hover:bg-gray-50/70 ${e.flag === 'urgent' ? 'bg-red-50/40' : ''}`}>
                   <td className="px-4 py-3.5"><p className="text-[13px] font-semibold text-gray-900">{e.name}</p><p className="text-[11px] text-gray-500">{e.studentId}</p></td>
-                  <td className="px-4 py-3.5"><span className="bg-gray-50 border border-gray-100 text-[11px] font-semibold px-2.5 py-1 rounded-full text-gray-700">{e.exam}</span></td>
+                  <td className="px-4 py-3.5"><span className="bg-gray-50 border border-gray-100 text-[11px] font-semibold px-2.5 py-1 rounded-full text-gray-700 whitespace-nowrap">{e.exam}</span></td>
                   <td className="px-4 py-3.5 text-[13px] text-gray-700 max-w-[200px] truncate">{e.result}</td>
                   <td className="px-4 py-3.5"><FlagBadge flag={e.flag} /></td>
-                  <td className="px-4 py-3.5 text-[12px] text-gray-500">{e.date ? new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}</td>
+                  <td className="px-4 py-3.5 text-[12px] text-gray-500 whitespace-nowrap">{formatDate(e.date)}</td>
                 </tr>
               ))}
             </tbody>
@@ -162,7 +184,7 @@ export default function AssessmentResults() {
         </div>
       </div>
 
-      <p className="text-[11px] text-gray-400 text-center">Confidential under RA 10173 • Live data from gco-api</p>
+      <p className="text-[11px] text-gray-400 text-center">Confidential under RA 10173</p>
     </div>
   )
 }

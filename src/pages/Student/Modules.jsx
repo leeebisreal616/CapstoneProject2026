@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react'
 
-// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
-// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
-// const BASE = 'https://gco-api.infinityfreeapp.com'
-
 const STORAGE_KEY = 'gco_read_modules'
 
 const catLabel = {
@@ -12,15 +8,16 @@ const catLabel = {
   social: 'Personal-Social-Emotional',
   career: 'Career',
 }
+
 const catStyle = {
   academic: 'bg-[#e6f1fb] text-[#185FA5]',
   social: 'bg-[#E1F5EE] text-[#085041]',
   career: 'bg-[#ede9fe] text-[#3C3489]',
 }
+
 const filters = ['all', 'academic', 'social', 'career']
 const filterLabels = { all: 'All', academic: 'Academic', social: 'Personal-Social-Emotional', career: 'Career' }
 
-// Kahit anong form ng category galing DB -> academic / social / career lang
 function normCat(raw) {
   const c = String(raw || 'academic').toLowerCase().trim()
   if (c.includes('social') || c.includes('personal')) return 'social'
@@ -29,8 +26,20 @@ function normCat(raw) {
 }
 
 function loadRead() {
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? new Set(JSON.parse(raw)) : new Set() }
-  catch { return new Set() }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? new Set(JSON.parse(raw)) : new Set()
+  } catch { return new Set() }
+}
+
+// [NEW] Hatiin yung content sa paragraphs para maganda basahin dito mismo
+function renderContent(text) {
+  if (!text || text.startsWith('See resource:')) return null
+  const paras = String(text).split(/\n\s*\n/).filter(p => p.trim().length > 10)
+  if (!paras.length) return <p className="text-[14px] text-gray-700 leading-relaxed">{text}</p>
+  return paras.map((p, i) => (
+    <p key={i} className="text-[14.5px] text-gray-700 leading-[1.75] mt-3 first:mt-2">{p.trim()}</p>
+  ))
 }
 
 export default function Modules({ showToast }) {
@@ -40,6 +49,7 @@ export default function Modules({ showToast }) {
   const [openMod, setOpenMod] = useState(null)
   const [read, setRead] = useState(loadRead)
   const [loading, setLoading] = useState(true)
+  const [loadingContent, setLoadingContent] = useState(false)
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...read])) } catch {}
@@ -51,29 +61,49 @@ export default function Modules({ showToast }) {
         const res = await fetch(`${BASE}/modules/get_modules.php`)
         const data = await res.json()
         let list = Array.isArray(data) ? data : data.data || []
-        // ONLY ACTIVE MODULES - safe kahit Active / active / is_active
         list = list.filter(m => {
           if (m.is_active !== undefined) return Number(m.is_active) === 1
           const st = String(m.status || '').toLowerCase()
           return st === '' || st === 'active'
         })
         setMods(list.map((m, i) => ({
-          id: m.id ?? i,
+          id: m.id ?? m.module_id ?? i,
           c: normCat(m.category),
           t: m.title || '',
           d: m.description || m.content || '',
           gi: i + 1,
+          link: m.link || '',
+          source: m.source || '',
         })))
-      } catch (e) { console.error(e); setMods([]) }
+      } catch (e) { setMods([]) }
       finally { setLoading(false) }
     }
     fetchMods()
   }, [])
 
+  // [NEW] Pag binuksan yung module at maiksi / walang laman, kunin yung totoong article
+  useEffect(() => {
+    if (openMod === null) return
+    const m = mods[openMod]
+    if (!m || !m.link) return
+    const needsContent = !m.d || m.d.startsWith('See resource:') || m.d.length < 150
+    if (!needsContent) return
+    setLoadingContent(true)
+    fetch(`${BASE}/modules/fetch_metadata.php?url=${encodeURIComponent(m.link)}&full=1`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.content) {
+          setMods(prev => prev.map((x, idx) => idx === openMod ? { ...x, d: data.content } : x))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingContent(false))
+  }, [openMod])
+
   const q = search.toLowerCase()
   const filtered = mods
     .filter(m => filter === 'all' || m.c === filter)
-    .filter(m => (m.t || '').toLowerCase().includes(q) || (m.d || '').toLowerCase().includes(q))
+    .filter(m => (m.t || '').toLowerCase().includes(q) || (m.d || '').toLowerCase().includes(q) || (m.source || '').toLowerCase().includes(q))
 
   const markRead = (id) => {
     setRead(prev => { const next = new Set(prev); next.add(id); return next })
@@ -83,7 +113,7 @@ export default function Modules({ showToast }) {
   const readCount = mods.filter(m => read.has(m.id)).length
   const pct = mods.length ? Math.round((readCount / mods.length) * 100) : 0
 
-  if (loading) return <div className="p-10 text-center text-[13px] text-gray-400 w-full">Loading modules from MySQL...</div>
+  if (loading) return <div className="p-10 text-center text-[13px] text-gray-400 w-full">Loading modules...</div>
 
   // ---------- Detail View ----------
   if (openMod !== null) {
@@ -95,14 +125,32 @@ export default function Modules({ showToast }) {
         <div className="bg-[#085041] px-6 md:px-10 py-8 md:py-10 text-white">
           <p className="text-[10px] font-bold tracking-widest text-white/40">MODULE {String(m.gi).padStart(2, '0')} <span className="mx-1.5 text-white/30">|</span> {(catLabel[m.c] || 'Academic')?.toUpperCase()}</p>
           <h2 className="text-[28px] md:text-[36px] font-bold mt-3 leading-[1.05] max-w-[800px] tracking-tight">{m.t}</h2>
-          <p className="text-[13px] md:text-[14px] text-white/60 mt-3 max-w-[600px] leading-relaxed">{m.d}</p>
+          {m.source && <p className="text-[11px] font-bold tracking-widest text-white/40 mt-4">SOURCE — {m.source.toUpperCase()}</p>}
         </div>
 
         <div className="px-4 md:px-10 py-6 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 max-w-[1280px] mx-auto">
           <div className="space-y-4">
-            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 md:p-7">
               <p className="text-[11px] font-bold text-[#085041] tracking-widest">OVERVIEW</p>
-              <p className="text-[14px] text-gray-700 leading-relaxed mt-2">This module covers <strong>{(m.t || '').toLowerCase()}</strong>. Developed by GCO to help CvSU Imus students thrive.</p>
+
+              {/* [FIX] DITO NA MISMO BABASAHIN - HINDI NA KAILANGAN MAG-NEW TAB */}
+              {loadingContent ? (
+                <p className="text-[14px] text-gray-400 mt-3 animate-pulse">Loading article content...</p>
+              ) : renderContent(m.d) ? (
+                renderContent(m.d)
+              ) : (
+                <p className="text-[14px] text-gray-500 leading-relaxed mt-2">No preview available for this module. You can read the full article from the source below.</p>
+              )}
+
+              {/* [FIX] VIEW SOURCE - NASA PINAKABABA LANG, PANG-REFERENCE LANG */}
+              {m.link && (
+                <div className="mt-8 pt-5 border-t border-gray-100">
+                  <p className="text-[11px] text-gray-400 mb-3">Original source for reference:</p>
+                  <a href={m.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-white border border-[#085041] text-[#085041] text-[13px] font-bold px-5 py-2.5 rounded-full hover:bg-[#E8F5F1]">
+                    View Source — {m.source || 'External Link'} ↗
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 
@@ -112,7 +160,8 @@ export default function Modules({ showToast }) {
                 <p className="text-[10px] font-bold tracking-widest text-gray-400">PROGRESS</p>
                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${isDone ? 'bg-[#E8F5F1] text-[#085041]' : 'bg-amber-100 text-amber-800'}`}>{isDone ? 'Completed' : 'In Progress'}</span>
               </div>
-              <button onClick={() => !isDone && markRead(m.id)} className={`w-full py-3.5 rounded-full text-[14px] font-bold mt-6 ${isDone ? 'bg-[#E8F5F1] text-[#085041]' : 'bg-[#085041] text-white'}`}>{isDone ? '✓ Marked as Read' : 'Mark as Read'}</button>
+              {/* [FIX] Tinanggal na yung Open Source Link dito - nasa baba na lang */}
+              <button onClick={() => !isDone && markRead(m.id)} className={`w-full py-3.5 rounded-full text-[14px] font-bold mt-4 ${isDone ? 'bg-[#E8F5F1] text-[#085041]' : 'bg-[#085041] text-white'}`}>{isDone ? '✓ Marked as Read' : 'Mark as Read'}</button>
               <button onClick={() => setOpenMod(null)} className="w-full py-3 rounded-full text-[13px] font-semibold border border-gray-200 text-gray-700 mt-2.5">← Back</button>
             </div>
           </div>
@@ -150,7 +199,7 @@ export default function Modules({ showToast }) {
       </div>
 
       <div className="px-4 md:px-10 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pb-10 max-w-[1280px] mx-auto">
-        {filtered.length === 0 && <div className="col-span-3 text-center py-16 text-gray-400 text-[14px] bg-white border rounded-2xl">No modules - Admin hasn't added yet!</div>}
+        {filtered.length === 0 && <div className="col-span-3 text-center py-16 text-gray-400 text-[14px] bg-white border rounded-2xl">No modules yet</div>}
         {filtered.map(m => {
           const realIdx = mods.findIndex(x => x.id === m.id)
           const isRead = read.has(m.id)
@@ -162,6 +211,7 @@ export default function Modules({ showToast }) {
               </div>
               <h4 className="text-[15px] font-bold text-gray-900">{m.t}</h4>
               <p className="text-[13px] text-gray-500 mt-2 flex-1 line-clamp-3">{m.d}</p>
+              {m.source && <p className="text-[11px] font-bold text-[#085041] mt-3">Source — {m.source} ↗</p>}
               <div className="flex items-center justify-between mt-5">
                 <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full ${catStyle[m.c]}`}>{catLabel[m.c]}</span>
                 <span className="text-[12px] font-bold text-[#085041]">Read →</span>

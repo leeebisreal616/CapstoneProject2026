@@ -1,19 +1,57 @@
 import { useState, useEffect, useMemo } from 'react'
 
-// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
-// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
-// const BASE = 'https://gco-api.infinityfreeapp.com'
+
+function normalizeStatus(v) {
+  const s = String(v || '').toLowerCase().trim()
+  if (s === 'reviewed') return 'Reviewed'
+  return 'Pending Review'
+}
+
+function formatDate(d) {
+  if (!d) return 'N/A'
+  const dt = new Date(d)
+  if (isNaN(dt)) return 'N/A'
+  return dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function formatDateTime(d) {
+  if (!d) return 'N/A'
+  const dt = new Date(d)
+  if (isNaN(dt)) return 'N/A'
+  return dt.toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function formatLabel(key) {
+  return String(key || '')
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function formatValue(val) {
+  if (val === null || val === undefined || val === '') return null
+  if (Array.isArray(val)) return val.join(', ')
+  if (typeof val === 'object') {
+    try {
+      const parsed = typeof val === 'string' ? JSON.parse(val) : val
+      if (Array.isArray(parsed)) return parsed.join(', ')
+      if (typeof parsed === 'object') return Object.entries(parsed).map(([k, v]) => `${formatLabel(k)}: ${v}`).join(', ')
+    } catch {
+      return String(val)
+    }
+    return JSON.stringify(val)
+  }
+  return String(val)
+}
 
 function Badge({ status }) {
+  const s = normalizeStatus(status)
   const map = {
-    Pending: 'bg-amber-50 text-amber-700 border-amber-200',
     'Pending Review': 'bg-amber-50 text-amber-700 border-amber-200',
-    pending: 'bg-amber-50 text-amber-700 border-amber-200',
     Reviewed: 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]',
-    reviewed: 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]',
   }
-  return <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${map[status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{status}</span>
+  return <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${map[s] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>{s}</span>
 }
 
 const Icon = {
@@ -23,11 +61,12 @@ const Icon = {
 }
 
 function DetailRow({ label, value }) {
-  if (value === null || value === undefined || value === '') return null
+  const formatted = formatValue(value)
+  if (formatted === null) return null
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-3">
-      <p className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">{label}</p>
-      <p className="text-gray-900 text-[13px] mt-1 whitespace-pre-wrap">{Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}</p>
+      <p className="text-gray-400 text-[10px] font-bold tracking-widest uppercase">{formatLabel(label)}</p>
+      <p className="text-gray-900 text-[13px] mt-1 whitespace-pre-wrap leading-relaxed">{formatted}</p>
     </div>
   )
 }
@@ -50,12 +89,15 @@ export default function InventorySubmissions() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [pageError, setPageError] = useState('')
+  const [marking, setMarking] = useState(false)
 
   const filters = ['all', 'Pending Review', 'Reviewed']
 
   const fetchLive = async () => {
     try {
       setLoading(true)
+      setPageError('')
       const [needsRes, profileRes, studentsRes] = await Promise.all([
         fetch(`${BASE}/needs_assessment/get_needs_assessment.php`).then(r => r.json()).catch(() => ({ submissions: [] })),
         fetch(`${BASE}/student_profile/get_student_profile.php`).then(r => r.json()).catch(() => ({ submissions: [] })),
@@ -81,7 +123,7 @@ export default function InventorySubmissions() {
         studentId: row.student_id,
         type: 'Needs Assessment',
         date: row.date_submitted,
-        status: row.status || 'Pending Review',
+        status: normalizeStatus(row.status),
         details: row,
       }))
       const mappedProfile = profileList.map(row => ({
@@ -92,24 +134,43 @@ export default function InventorySubmissions() {
         studentId: row.student_id,
         type: 'Student Profile',
         date: row.date_submitted || row.created_at,
-        status: row.status || 'Pending Review',
+        status: normalizeStatus(row.status),
         details: row,
       }))
       const all = [...mappedNeeds, ...mappedProfile].sort((a, b) => new Date(b.date) - new Date(a.date))
       setSubmissions(all)
-    } catch (e) { console.error('FETCH INVENTORY FAILED', e); setSubmissions([]) } finally { setLoading(false) }
+    } catch (e) {
+      setSubmissions([])
+      setPageError('Cannot connect to server. Check if XAMPP (Apache) is running.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchLive() }, [])
 
   const markReviewed = async () => {
-    if (!selected) return
+    if (!selected || marking) return
+    setMarking(true)
+    setPageError('')
     try {
-      const endpoint = selected.source === 'needs_assessment' ? `${BASE}/needs_assessment/mark_reviewed.php` : `${BASE}/student_profile/mark_reviewed.php`
-      await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ submission_id: selected.rawId }) })
+      const endpoint = selected.source === 'needs_assessment'
+        ? `${BASE}/needs_assessment/mark_reviewed.php`
+        : `${BASE}/student_profile/mark_reviewed.php`
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submission_id: selected.rawId, id: selected.rawId })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data.success === false) throw new Error(data.message || 'Update failed')
       setSubmissions(prev => prev.map(s => s.id === selected.id ? { ...s, status: 'Reviewed' } : s))
       setSelected(prev => prev ? { ...prev, status: 'Reviewed' } : prev)
-    } catch (err) { alert('Failed to update - check mark_reviewed.php') }
+    } catch (err) {
+      setPageError('Failed to mark as reviewed. Please try again.')
+    } finally {
+      setMarking(false)
+    }
   }
 
   const stats = useMemo(() => ({
@@ -122,7 +183,10 @@ export default function InventorySubmissions() {
 
   const filtered = useMemo(() => {
     let list = filter === 'all' ? submissions : submissions.filter(s => s.status === filter)
-    if (search.trim()) list = list.filter(s => (s.name || '').toLowerCase().includes(search.trim().toLowerCase()) || String(s.studentId || '').includes(search.trim()))
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(s => (s.name || '').toLowerCase().includes(q) || String(s.studentId || '').includes(q))
+    }
     return list
   }, [submissions, filter, search])
 
@@ -142,7 +206,7 @@ export default function InventorySubmissions() {
         <div className="bg-white border border-gray-100 rounded-[20px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           <p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Total Submissions</p>
           <p className="text-[24px] font-extrabold text-gray-900 mt-1 leading-none">{stats.total}</p>
-          <p className="text-[11px] text-gray-400 mt-1.5">{stats.profile} Profile • {stats.needs} Needs</p>
+          <p className="text-[11px] text-gray-400 mt-1.5">{stats.profile} Profile — {stats.needs} Needs</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-[20px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
           <p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Pending Review</p>
@@ -160,6 +224,8 @@ export default function InventorySubmissions() {
           <p className="text-[11px] text-white/60 mt-1">Initial forms submitted by students.</p>
         </div>
       </div>
+
+      {pageError && <div className="bg-red-50 border border-red-200 text-red-700 text-[12.5px] font-medium px-4 py-2.5 rounded-[14px]">{pageError} <button onClick={() => setPageError('')} className="ml-2 font-bold underline">Dismiss</button></div>}
 
       <div className="bg-white border border-gray-100 rounded-[20px] p-3.5 flex flex-wrap items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="flex gap-1.5">
@@ -190,8 +256,8 @@ export default function InventorySubmissions() {
               {filtered.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50/70">
                   <td className="px-4 py-3.5"><p className="text-[13px] font-semibold text-gray-900">{s.name}</p><p className="text-[11px] text-gray-500">{s.studentId}</p></td>
-                  <td className="px-4 py-3.5"><span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${s.type === 'Needs Assessment' ? 'bg-[#e6f1fb] text-[#185FA5] border-[#bdd7f5]' : 'bg-[#ede9fe] text-[#3C3489] border-[#d8d0ff]'}`}>{s.type}</span></td>
-                  <td className="px-4 py-3.5 text-[12px] text-gray-600">{s.date ? new Date(s.date).toLocaleDateString() : 'N/A'}</td>
+                  <td className="px-4 py-3.5"><span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${s.type === 'Needs Assessment' ? 'bg-[#e6f1fb] text-[#185FA5] border-[#bdd7f5]' : 'bg-[#ede9fe] text-[#3C3489] border-[#d8d0ff]'}`}>{s.type}</span></td>
+                  <td className="px-4 py-3.5 text-[12px] text-gray-600">{formatDate(s.date)}</td>
                   <td className="px-4 py-3.5"><Badge status={s.status} /></td>
                   <td className="px-4 py-3.5 text-right"><button onClick={() => setSelected(s)} className="bg-white border border-gray-200 text-[#085041] text-[12px] font-semibold px-4 py-1.5 rounded-full hover:bg-[#085041] hover:text-white transition-colors">View</button></td>
                 </tr>
@@ -207,21 +273,21 @@ export default function InventorySubmissions() {
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[12px] bg-white border border-gray-200 flex items-center justify-center text-[#085041]">{Icon.file('w-5 h-5')}</div>
-                <div><p className="text-[15px] font-bold text-gray-900">{selected.type}</p><p className="text-[11px] text-gray-500">{selected.name} • {selected.studentId}</p></div>
+                <div><p className="text-[15px] font-bold text-gray-900">{selected.type}</p><p className="text-[11px] text-gray-500">{selected.name} — {selected.studentId}</p></div>
               </div>
               <button onClick={() => setSelected(null)} className="w-8 h-8 rounded-full bg-white border flex items-center justify-center">{Icon.x('w-4 h-4')}</button>
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-3 mt-4 mb-4 flex items-center justify-between">
-              <div><p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Submitted</p><p className="text-[12px] font-semibold text-gray-700 mt-0.5">{selected.date ? new Date(selected.date).toLocaleString() : 'N/A'}</p></div>
+              <div><p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">Submitted</p><p className="text-[12px] font-semibold text-gray-700 mt-0.5">{formatDateTime(selected.date)}</p></div>
               <Badge status={selected.status} />
             </div>
             <div className="space-y-1.5">
               {selected.details && Object.entries(selected.details).map(([key, val]) => {
-                if (['profile_id', 'submission_id', 'id', 'status', 'created_at', 'date_submitted'].includes(key)) return null
-                return <DetailRow key={key} label={key.replace(/_/g, ' ')} value={val} />
+                if (['profile_id', 'submission_id', 'id', 'status', 'created_at', 'date_submitted', 'student_id', 'first_name', 'last_name', 'name'].includes(key)) return null
+                return <DetailRow key={key} label={key} value={val} />
               })}
             </div>
-            {selected.status !== 'Reviewed' && (<button onClick={markReviewed} className="bg-[#085041] text-white text-[13px] font-bold py-3 rounded-full w-full mt-5 hover:bg-[#06382D]">Mark as Reviewed</button>)}
+            {selected.status !== 'Reviewed' && (<button onClick={markReviewed} disabled={marking} className="bg-[#085041] text-white text-[13px] font-bold py-3 rounded-full w-full mt-5 hover:bg-[#06382D] disabled:opacity-60">{marking ? 'Saving...' : 'Mark as Reviewed'}</button>)}
           </div>
         </div>
       )}

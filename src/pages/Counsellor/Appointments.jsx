@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-// LOCAL: D:\xampp\htdocs\gco-api
 const BASE = 'http://localhost/gco-api'
-// LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
-// const BASE = 'https://gco-api.infinityfreeapp.com'
 
 const CONCERN_TYPES = ['Academic', 'Psychological', 'Personal-Social-Emotional', 'Career']
 
@@ -11,13 +8,12 @@ const formatCourse = (course, year) => {
   const c = (course || '').trim()
   const y = String(year || '').trim()
   if (!y) return c || 'N/A'
-  return `${c} ${y}`.replace('4rd', '4th').trim()
+  return `${c} ${y}`.trim()
 }
 
 const formatTime = (t) => {
   const s = String(t || '').trim()
   if (!s || s === '00:00:00' || s === '00:00') return ''
-  // Kung galing sa Render: "7AM-8AM" na, ibalik na lang as is
   if (s.includes('AM') || s.includes('PM')) return s
   const parts = s.split(':')
   let h = parseInt(parts[0], 10)
@@ -55,7 +51,7 @@ function UrgencyBadge({ urgency }) {
     Urgent: 'bg-orange-50 text-orange-700 border-orange-200',
     Normal: 'bg-[#E1F5EE] text-[#085041] border-[#9FE1CB]',
   }
-  return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${map[u] || map.Normal}`}>{u === 'Emergency' ? '🚨 Emergency' : u}</span>
+  return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${map[u] || map.Normal}`}>{u}</span>
 }
 
 function ConcernBadge({ concern }) {
@@ -91,9 +87,6 @@ function ConfirmArchiveModal({ title, message, confirmLabel, isRestore, onCancel
 
 export default function AppointmentsManagement() {
   const [appointments, setAppointments] = useState([])
-  const [archivedIds, setArchivedIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gco_archived_ids') || '[]') } catch { return [] }
-  })
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -105,20 +98,24 @@ export default function AppointmentsManagement() {
   const [archiveTarget, setArchiveTarget] = useState(null)
   const [pageError, setPageError] = useState('')
 
-  // [STEP 6 FIX] - Render /api/appointments na, hindi na PHP
-  const fetchLive = useCallback(async () => {
+  const fetchLive = useCallback(async (archived = false) => {
     setLoading(true)
     setPageError('')
     try {
-      const res = await fetch(`${BASE}/api/appointments`)
+      const res = await fetch(`${BASE}/appointments/get_appointments.php?archived=${archived ? 1 : 0}`)
       const data = await res.json()
       const list = Array.isArray(data) ? data : data.data || data.appointments || []
       const normalized = list.map((a) => {
         const statusRaw = a.status || 'Pending'
-        const normalizedStatus = statusRaw.toLowerCase() === 'approved' ? 'Approved' : statusRaw.toLowerCase() === 'declined' ? 'Declined' : statusRaw.toLowerCase() === 'completed' ? 'Completed' : statusRaw.toLowerCase() === 'cancelled' ? 'Cancelled' : 'Pending'
+        const normalizedStatus = statusRaw.toLowerCase() === 'approved' ? 'Approved'
+          : statusRaw.toLowerCase() === 'declined' ? 'Declined'
+          : statusRaw.toLowerCase() === 'completed' ? 'Completed'
+          : statusRaw.toLowerCase() === 'cancelled' ? 'Cancelled'
+          : 'Pending'
         const urgencyRaw = (a.urgency_level || a.urgency || a.priority || 'Normal').trim()
-        const urgency = urgencyRaw.toLowerCase().includes('emerg') ? 'Emergency' : urgencyRaw.toLowerCase().includes('urgent') ? 'Urgent' : 'Normal'
-        // Student info galing sa Render: "Aaron Valencia - 202311325 - BSIT 4th Year"
+        const urgency = urgencyRaw.toLowerCase().includes('emerg') ? 'Emergency'
+          : urgencyRaw.toLowerCase().includes('urgent') ? 'Urgent'
+          : 'Normal'
         const parts = String(a.student_info || '').split(' - ')
         const namePart = parts[0] || a.student_name || a.name || `Student ${a.student_id || ''}`
         return {
@@ -146,13 +143,13 @@ export default function AppointmentsManagement() {
       setAppointments(normalized)
     } catch (e) {
       setAppointments([])
-      setPageError('Failed to load appointments: ' + e.message)
+      setPageError('Cannot connect to server. Check if XAMPP (Apache) is running.')
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { fetchLive() }, [fetchLive])
+  useEffect(() => { fetchLive(showArchived) }, [showArchived, fetchLive])
 
   const handleToggleArchived = (val) => { setShowArchived(val); setSelected(null) }
 
@@ -162,36 +159,46 @@ export default function AppointmentsManagement() {
     setArchiveTarget({ ...target, mode })
   }
 
-  // [STEP 6 FIX] - Archive = local lang muna (localStorage), hindi buburahin sa DB
   const confirmArchive = async () => {
     if (!archiveTarget) return
     const { id, mode } = archiveTarget
     try {
-      const res = await fetch(`${BASE}/appointments/archive_appointment.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, appointment_id: id, action: mode }) })
+      const res = await fetch(`${BASE}/appointments/archive_appointment.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, appointment_id: id, action: mode })
+      })
       const data = await res.json()
       if (data.success === false) throw new Error(data.message || 'Archive failed')
       setArchiveTarget(null)
+      setSelected(null)
       fetchLive(showArchived)
-    } catch (e) { setArchiveTarget(null); setPageError('Failed to update appointment: ' + e.message) }
+    } catch (e) {
+      setArchiveTarget(null)
+      setPageError('Failed to update appointment: ' + e.message)
+    }
   }
 
-  // [STEP 6 FIX] - Render PUT /api/appointments/:id
   const applyStatusChange = async () => {
     if (!confirmAction) return
     try {
-      const res = await fetch(`${BASE}/appointments/update_status.php`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appointment_id: confirmAction.id, id: confirmAction.id, status: confirmAction.action }) })
+      const res = await fetch(`${BASE}/appointments/update_status.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: confirmAction.id, id: confirmAction.id, status: confirmAction.action })
+      })
       const data = await res.json()
       if (data.success === false) throw new Error(data.message || 'Status update failed')
       setConfirmAction(null)
       setSelected(null)
       fetchLive(showArchived)
-    } catch (err) { setConfirmAction(null); setPageError('Failed to update status: ' + err.message) }
+    } catch (err) {
+      setConfirmAction(null)
+      setPageError('Failed to update status: ' + err.message)
+    }
   }
 
-  const visibleAppointments = appointments.filter(a => {
-    const isArchived = archivedIds.includes(String(a.id))
-    return showArchived ? isArchived : !isArchived
-  })
+  const visibleAppointments = appointments
 
   const filtered = visibleAppointments.filter(a => {
     const matchStatus = filter === 'all' || a.status === filter
@@ -201,8 +208,12 @@ export default function AppointmentsManagement() {
     return matchStatus && matchSearch && matchUrgency && matchConcern
   })
 
-  const stats = { total: visibleAppointments.length, pending: visibleAppointments.filter(a => a.status === 'Pending').length, approved: visibleAppointments.filter(a => a.status === 'Approved').length }
-  const archivedCount = appointments.filter(a => archivedIds.includes(String(a.id))).length
+  const stats = {
+    total: visibleAppointments.length,
+    pending: visibleAppointments.filter(a => a.status === 'Pending').length,
+    approved: visibleAppointments.filter(a => a.status === 'Approved').length
+  }
+
   const emergencyTotal = visibleAppointments.filter(a => a.urgency === 'Emergency').length
   const urgentTotal = visibleAppointments.filter(a => a.urgency === 'Urgent').length
   const filteredActive = filtered.filter(a => a.status !== 'Completed').length
@@ -214,12 +225,12 @@ export default function AppointmentsManagement() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-extrabold text-gray-900 tracking-tight leading-tight">Appointments</h1>
-          <p className="text-[12.5px] text-gray-500 mt-0.5">{showArchived ? `${visibleAppointments.length} archived` : `${filteredActive} active • ${stats.pending} pending`}</p>
+          <p className="text-[12.5px] text-gray-500 mt-0.5">{showArchived ? `${visibleAppointments.length} archived` : `${filteredActive} active — ${stats.pending} pending`}</p>
         </div>
-        <button onClick={() => fetchLive()} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
+        <button onClick={() => fetchLive(showArchived)} className="bg-white border border-gray-200 text-[12px] font-medium px-4 py-2 rounded-full hover:border-gray-300 shadow-sm">Refresh</button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-white border border-gray-100 rounded-[20px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)]"><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Total</p><p className="text-[24px] font-extrabold text-gray-900 leading-none mt-1">{stats.total}</p><p className="text-[11px] text-gray-400 mt-1.5">{showArchived ? 'Archived' : 'Active bookings'}</p></div>
         <div className="bg-white border border-gray-100 rounded-[20px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)]"><p className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Pending</p><p className="text-[24px] font-extrabold text-amber-600 leading-none mt-1">{stats.pending}</p><p className="text-[11px] text-gray-400 mt-1.5">Awaiting review</p></div>
         <div className="bg-red-50 border border-red-200 rounded-[20px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.03)]"><p className="text-[10px] font-bold tracking-wider text-red-500 uppercase">Emergency</p><p className="text-[24px] font-extrabold text-red-600 leading-none mt-1">{emergencyTotal}</p><p className="text-[11px] text-red-400 mt-1.5">Needs immediate action</p></div>
@@ -231,7 +242,7 @@ export default function AppointmentsManagement() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-gray-100 rounded-full p-1">
             <button onClick={() => handleToggleArchived(false)} className={`text-[12px] font-semibold px-4 py-1.5 rounded-full transition ${!showArchived ? 'bg-white text-[#085041] shadow-sm' : 'text-gray-500'}`}>Active</button>
-            <button onClick={() => handleToggleArchived(true)} className={`text-[12px] font-semibold px-4 py-1.5 rounded-full transition ${showArchived ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500'}`}>Archived ({archivedCount})</button>
+            <button onClick={() => handleToggleArchived(true)} className={`text-[12px] font-semibold px-4 py-1.5 rounded-full transition ${showArchived ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-500'}`}>Archived</button>
           </div>
           <span className="hidden sm:block w-px h-5 bg-gray-200 mx-1" />
           <div className="flex flex-wrap gap-1.5">
@@ -284,7 +295,7 @@ export default function AppointmentsManagement() {
       {selected && !confirmAction && !archiveTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4" onClick={(e) => e.target === e.currentTarget && setSelected(null)}>
           <div className="bg-white rounded-[20px] p-6 w-full max-w-md shadow-2xl">
-            <div className="flex justify-between items-start mb-5"><div><p className="text-[16px] font-bold tracking-tight">Appointment Details</p><p className="text-[12px] text-gray-400 mt-0.5">{selected.name} • {selected.studentId}</p></div><button onClick={() => setSelected(null)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">{Icon.x('w-3.5 h-3.5')}</button></div>
+            <div className="flex justify-between items-start mb-5"><div><p className="text-[16px] font-bold tracking-tight">Appointment Details</p><p className="text-[12px] text-gray-400 mt-0.5">{selected.name} — {selected.studentId}</p></div><button onClick={() => setSelected(null)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">{Icon.x('w-3.5 h-3.5')}</button></div>
             <div className="space-y-3 text-[13px]">
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between"><span className="text-gray-400 text-[12px]">Course</span><span className="font-medium">{formatCourse(selected.course, selected.year)}</span></div>
               <div className="bg-gray-50 rounded-xl p-3 flex justify-between items-center"><span className="text-gray-400 text-[12px]">Concern</span><ConcernBadge concern={selected.concern} /></div>
@@ -295,11 +306,11 @@ export default function AppointmentsManagement() {
               {selected.reason && <div className="bg-gray-50 rounded-xl p-3"><p className="text-gray-400 text-[12px] mb-1">Reason</p><p className="text-gray-700 leading-relaxed">{selected.reason}</p></div>}
               {(selected.emergency_contact_name || selected.emergency_contact_no) && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                  <p className="text-red-700 text-[12px] font-bold">🚨 Emergency Contact</p>
+                  <p className="text-red-700 text-[12px] font-bold">Emergency Contact</p>
                   <p className="text-gray-700 text-[12px] mt-1 leading-relaxed">
                     {selected.emergency_contact_name || 'N/A'}
-                    {selected.emergency_contact_relation ? ` • ${selected.emergency_contact_relation}` : ''}
-                    {selected.emergency_contact_no ? <><br />📞 {selected.emergency_contact_no}</> : ''}
+                    {selected.emergency_contact_relation ? ` — ${selected.emergency_contact_relation}` : ''}
+                    {selected.emergency_contact_no ? <><br />Contact: {selected.emergency_contact_no}</> : ''}
                   </p>
                 </div>
               )}
@@ -316,7 +327,14 @@ export default function AppointmentsManagement() {
       )}
 
       {archiveTarget && (
-        <ConfirmArchiveModal title={archiveTarget.mode === 'restore' ? 'Restore Appointment?' : 'Archive Appointment?'} message={archiveTarget.mode === 'restore' ? `Restore the appointment for ${archiveTarget.name}? It will return to Active and be included in reports.` : `Archive the appointment for ${archiveTarget.name}? It will be moved to Archived and excluded from reports.`} confirmLabel={archiveTarget.mode === 'restore' ? 'Restore' : 'Archive'} isRestore={archiveTarget.mode === 'restore'} onCancel={() => setArchiveTarget(null)} onConfirm={confirmArchive} />
+        <ConfirmArchiveModal
+          title={archiveTarget.mode === 'restore' ? 'Restore Appointment?' : 'Archive Appointment?'}
+          message={archiveTarget.mode === 'restore' ? `Restore the appointment for ${archiveTarget.name}? It will return to Active and be included in reports.` : `Archive the appointment for ${archiveTarget.name}? It will be moved to Archived and excluded from reports.`}
+          confirmLabel={archiveTarget.mode === 'restore' ? 'Restore' : 'Archive'}
+          isRestore={archiveTarget.mode === 'restore'}
+          onCancel={() => setArchiveTarget(null)}
+          onConfirm={confirmArchive}
+        />
       )}
     </div>
   )
