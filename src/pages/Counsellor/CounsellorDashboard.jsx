@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { logout, getCounsellor, updateCounsellorPhoto } from '../../utils/counsellorAuth'
 import Overview from './Overview'
 import Appointments from './Appointments'
@@ -26,17 +27,36 @@ const Icon = {
 }
 
 const navItems = [
-  { id: 'overview', label: 'Dashboard', icon: Icon.overview },
-  { id: 'appointments', label: 'Appointments', icon: Icon.appointments },
-  { id: 'inventory', label: 'Inventory', icon: Icon.inventory },
-  { id: 'assessment', label: 'Assessment Results', icon: Icon.assessment },
-  { id: 'modules', label: 'Modules', icon: Icon.modules },
-  { id: 'announcements', label: 'Announcements', icon: Icon.announcements },
-  { id: 'students', label: 'Students Directory', icon: Icon.students },
-  { id: 'report', label: 'Reports', icon: Icon.report },
+  { id: 'overview', label: 'Dashboard', icon: Icon.overview, path: '/counsellor/dashboard' },
+  { id: 'appointments', label: 'Appointments', icon: Icon.appointments, path: '/counsellor/appointments' },
+  { id: 'inventory', label: 'Inventory', icon: Icon.inventory, path: '/counsellor/inventory' },
+  { id: 'assessment', label: 'Assessment Results', icon: Icon.assessment, path: '/counsellor/assessments' },
+  { id: 'modules', label: 'Modules', icon: Icon.modules, path: '/counsellor/modules' },
+  { id: 'announcements', label: 'Announcements', icon: Icon.announcements, path: '/counsellor/announcements' },
+  { id: 'students', label: 'Students Directory', icon: Icon.students, path: '/counsellor/students' },
+  { id: 'report', label: 'Reports', icon: Icon.report, path: '/counsellor/reports' },
 ]
 
-function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsellor }) {
+// FIXED: lahat ng id dito, dapat tugma sa navItems at sa views sa baba.
+// Dati: '/counsellor/reports' -> 'reports' (plural) kaya views['reports'] = undefined = white screen
+// Ngayon: '/counsellor/reports' -> 'report' (singular) tugma na sa views['report']
+const pathToId = {
+  '/counsellor/dashboard': 'overview',
+  '/counsellor/appointments': 'appointments',
+  '/counsellor/inventory': 'inventory',
+  '/counsellor/assessments': 'assessment',
+  '/counsellor/assessment': 'assessment',
+  '/counsellor/assessment-results': 'assessment',
+  '/counsellor/modules': 'modules',
+  '/counsellor/announcements': 'announcements',
+  '/counsellor/students': 'students',
+  '/counsellor/students-directory': 'students',
+  '/counsellor/reports': 'report',
+  '/counsellor/report': 'report',
+}
+
+function Sidebar({ view, mobileOpen, setMobileOpen, onLogout, counsellor }) {
+  const navigate = useNavigate()
   const getInitials = (name) => {
     if (!name) return 'G'
     const parts = name.trim().split(' ').filter(Boolean)
@@ -44,19 +64,11 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
     return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
   }
   const initial = getInitials(counsellor?.name)
-
   const [showProfile, setShowProfile] = useState(false)
-  // FIXED: Per-user only. No more fallback to global localStorage 'counsellor_photo' / 'admin_photo'
-  // Kaya hindi na mag-cross yung pic ni Jervin kay Hazel.
   const [photo, setPhoto] = useState(counsellor?.profile_photo || '')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
-
-  // FIXED: Pag nagpalit ng naka-login na counsellor, magpalit din ng photo
-  useEffect(() => {
-    setPhoto(counsellor?.profile_photo || '')
-  }, [counsellor?.admin_id, counsellor?.id, counsellor?.profile_photo])
-
+  useEffect(() => { setPhoto(counsellor?.profile_photo || '') }, [counsellor?.admin_id, counsellor?.id, counsellor?.profile_photo])
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -67,15 +79,12 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
       fd.append('photo', file)
       fd.append('username', counsellor?.username || counsellor?.email || '')
       fd.append('admin_id', counsellor?.admin_id || counsellor?.id || '')
-      const res = await fetch(`${API}/counsellor/upload_profile_photo.php`, {
-        method: 'POST',
-        body: fd
-      })
+      const res = await fetch(`${API}/counsellor/upload_profile_photo.php`, { method: 'POST', body: fd })
       const j = await res.json()
       if (!j.success) throw new Error(j.message || 'Upload failed')
-
-      setPhoto(j.photo_url)
-      updateCounsellorPhoto(j.photo_url)
+      const newPhoto = j.photo_url || j.profile_photo || j.url
+      setPhoto(newPhoto)
+      updateCounsellorPhoto(newPhoto)
     } catch (err) {
       setUploadError('Could not upload photo. Try again.')
     } finally {
@@ -83,7 +92,6 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
       e.target.value = ''
     }
   }
-
   return (
     <>
       {mobileOpen && (<div className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-[2px]" onClick={() => setMobileOpen(false)} />)}
@@ -103,7 +111,7 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
           {navItems.map((item) => {
             const isActive = view === item.id
             return (
-              <button key={item.id} onClick={() => { setView(item.id); setMobileOpen(false) }} className={`flex items-center gap-3 px-3 py-[9px] rounded-[12px] text-[13px] font-medium transition-all ${isActive ? 'bg-white text-[#085041] shadow-[0_4px_16px_rgba(0,0,0,0.15)] font-semibold' : 'text-white/65 hover:text-white hover:bg-white/10'}`}>
+              <button key={item.id} onClick={() => { navigate(item.path); setMobileOpen(false) }} className={`flex items-center gap-3 px-3 py-[9px] rounded-[12px] text-[13px] font-medium transition-all ${isActive ? 'bg-white text-[#085041] shadow-[0_4px_16px_rgba(0,0,0,0.15)] font-semibold' : 'text-white/65 hover:text-white hover:bg-white/10'}`}>
                 {item.icon('w-[18px] h-[18px] shrink-0')}
                 <span className="flex-1 text-left">{item.label}</span>
                 {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#085041]" />}
@@ -113,11 +121,7 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
         </div>
         <div className="px-3 pb-4 pt-2">
           <button onClick={() => setShowProfile(true)} className="bg-white/[0.08] border border-white/10 rounded-[14px] p-3 mb-2 flex items-center gap-2.5 w-full text-left hover:bg-white/[0.14] transition cursor-pointer">
-            {photo ? (
-              <img src={photo.startsWith('http') ? photo : `https://cheerful-magenta-fly-38.hostingersite.com${photo}`} className="w-9 h-9 rounded-full object-cover shrink-0" alt="Profile" />
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#085041] text-[12px] font-bold shrink-0">{initial}</div>
-            )}
+            {photo ? (<img src={photo.startsWith('http') ? photo : `https://cheerful-magenta-fly-38.hostingersite.com${photo}`} className="w-9 h-9 rounded-full object-cover shrink-0" alt="Profile" />) : (<div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#085041] text-[12px] font-bold shrink-0">{initial}</div>)}
             <div className="min-w-0 leading-tight flex-1">
               <p className="text-white text-[12.5px] font-semibold truncate">{counsellor?.name || counsellor?.username || 'Counsellor'}</p>
               <p className="text-white/50 text-[11px] truncate">Counsellor Portal</p>
@@ -129,16 +133,11 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
           </button>
         </div>
       </div>
-
       {showProfile && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/40 backdrop-blur-[2px]" onClick={e => e.target === e.currentTarget && setShowProfile(false)}>
           <div className="bg-white rounded-[20px] p-6 w-full max-w-[320px] shadow-2xl text-center">
             <div className="relative w-24 h-24 mx-auto">
-              {photo ? (
-                <img src={photo.startsWith('http') ? photo : `https://cheerful-magenta-fly-38.hostingersite.com${photo}`} className="w-24 h-24 rounded-full object-cover border-4 border-[#E1F5EE]" alt="Profile" />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-[#E1F5EE] flex items-center justify-center text-[28px] font-bold text-[#085041]">{initial}</div>
-              )}
+              {photo ? (<img src={photo.startsWith('http') ? photo : `https://cheerful-magenta-fly-38.hostingersite.com${photo}`} className="w-24 h-24 rounded-full object-cover border-4 border-[#E1F5EE]" alt="Profile" />) : (<div className="w-24 h-24 rounded-full bg-[#E1F5EE] flex items-center justify-center text-[28px] font-bold text-[#085041]">{initial}</div>)}
               <label htmlFor="counsellor-photo-upload" className="absolute bottom-0 right-0 w-8 h-8 bg-[#085041] text-white rounded-full flex items-center justify-center cursor-pointer text-[14px] shadow hover:bg-[#06382D]">📷</label>
               <input id="counsellor-photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
             </div>
@@ -155,11 +154,17 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
 }
 
 export default function CounsellorDashboard({ onLogout }) {
-  const [view, setView] = useState('overview')
+  const location = useLocation()
+  const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
   const counsellor = getCounsellor()
+  const view = pathToId[location.pathname] || 'overview'
+  const goToView = (id) => {
+    const item = navItems.find(n => n.id === id)
+    if (item) navigate(item.path)
+  }
   const views = {
-    overview: <Overview setView={setView} />,
+    overview: <Overview setView={goToView} />,
     appointments: <Appointments />,
     inventory: <InventorySubmissions />,
     assessment: <AssessmentResults />,
@@ -170,14 +175,14 @@ export default function CounsellorDashboard({ onLogout }) {
   }
   return (
     <div className="flex min-h-screen bg-[#F4F7F5] font-sans">
-      <Sidebar view={view} setView={setView} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} onLogout={() => { logout(); onLogout?.() }} counsellor={counsellor} />
+      <Sidebar view={view} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} onLogout={() => { logout(); onLogout?.() }} counsellor={counsellor} />
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="lg:hidden sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center gap-2.5">
           <button className="w-9 h-9 rounded-[10px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shadow-sm" onClick={() => setMobileOpen(true)}>{Icon.menu('w-4 h-4')}</button>
           <p className="text-[13px] font-bold text-gray-900 tracking-tight">GCO Counsellor</p>
           <span className="ml-auto text-[11px] text-gray-400 font-medium">CvSU Imus</span>
         </div>
-        <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-5 lg:py-6">{views[view]}</div>
+        <div className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-5 lg:py-6">{views[view] || views['overview']}</div>
       </div>
     </div>
   )

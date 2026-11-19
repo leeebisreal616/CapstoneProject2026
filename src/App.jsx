@@ -100,51 +100,37 @@ function StudentLayout() {
   )
 }
 
-// FIXED: Gated counsellor area - may totoong /login at /dashboard routes na
+// FIXED: Counsellor area - lahat ng tab, may sariling totoong URL na
 function CounsellorArea() {
   const [authed, setAuthed] = useState(isLoggedIn())
-
   useEffect(() => {
     setAuthed(isLoggedIn())
   }, [])
 
+  // Isang component lang para sa lahat ng counsellor pages
+  // Yung loob ng CounsellorDashboard ang magbasa ng URL para malaman kung anong tab
+  const DashboardPage = <CounsellorDashboard onLogout={() => setAuthed(false)} />
+  const GuardedDashboard = authed ? DashboardPage : <Navigate to="/counsellor/login" replace />
+
   return (
     <Routes>
-      {/* Pag nasa /counsellor/login ka at naka-login ka na, lipat ka sa dashboard */}
-      <Route
-        path="login"
-        element={
-          authed
-            ? <Navigate to="/counsellor/dashboard" replace />
-            : <CounsellorLogin onSuccess={() => setAuthed(true)} />
-        }
-      />
-      {/* Pag nasa /counsellor/dashboard ka at hindi ka naka-login, balik ka sa login */}
-      <Route
-        path="dashboard"
-        element={
-          authed
-            ? <CounsellorDashboard onLogout={() => setAuthed(false)} />
-            : <Navigate to="/counsellor/login" replace />
-        }
-      />
+      <Route path="login" element={ authed ? <Navigate to="/counsellor/dashboard" replace /> : <CounsellorLogin onSuccess={() => setAuthed(true)} /> } />
+
+      {/* LAHAT NG TABS, MAY SARILING ROUTE NA - HINDI NA BABALIK SA /dashboard */}
+      <Route path="dashboard" element={GuardedDashboard} />
+      <Route path="appointments" element={GuardedDashboard} />
+      <Route path="inventory" element={GuardedDashboard} />
+      <Route path="assessments" element={GuardedDashboard} />
+      <Route path="assessment-results" element={GuardedDashboard} />
+      <Route path="modules" element={GuardedDashboard} />
+      <Route path="announcements" element={GuardedDashboard} />
+      <Route path="students" element={GuardedDashboard} />
+      <Route path="students-directory" element={GuardedDashboard} />
+      <Route path="reports" element={GuardedDashboard} />
+
       {/* Default: /counsellor -> kung naka-login dashboard, kung hindi login */}
-      <Route
-        path=""
-        element={
-          authed
-            ? <Navigate to="/counsellor/dashboard" replace />
-            : <Navigate to="/counsellor/login" replace />
-        }
-      />
-      <Route
-        path="*"
-        element={
-          authed
-            ? <Navigate to="/counsellor/dashboard" replace />
-            : <Navigate to="/counsellor/login" replace />
-        }
-      />
+      <Route path="" element={ authed ? <Navigate to="/counsellor/dashboard" replace /> : <Navigate to="/counsellor/login" replace /> } />
+      <Route path="*" element={ authed ? <Navigate to="/counsellor/dashboard" replace /> : <Navigate to="/counsellor/login" replace /> } />
     </Routes>
   )
 }
@@ -156,21 +142,12 @@ export default function App() {
         {/* STUDENT */}
         <Route path="/login" element={<StudentLogin />} />
         <Route path="/register" element={<Register />} />
-
         {/* COUNSELLOR - DAPAT BAGO YUNG /* NA STUDENT, KUNDI MAHUHULOG SYA SA STUDENT GUARD */}
         <Route path="/counsellor/forgot-password" element={<CounsellorForgotPassword />} />
         <Route path="/counsellor/reset-password" element={<CounsellorResetPassword />} />
         <Route path="/counsellor/*" element={<CounsellorArea />} />
-
         {/* STUDENT AREA - PINAKADULO LANG DAPAT TO */}
-        <Route
-          path="/*"
-          element={
-            <RequireStudentAuth>
-              <StudentLayout />
-            </RequireStudentAuth>
-          }
-        />
+        <Route path="/*" element={ <RequireStudentAuth> <StudentLayout /> </RequireStudentAuth> } />
       </Routes>
     </ErrorBoundary>
   )
