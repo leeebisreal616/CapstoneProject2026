@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { login } from '../../utils/counsellorAuth'
 
 export default function CounsellorLogin({ onSuccess }) {
+  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -18,7 +19,10 @@ export default function CounsellorLogin({ onSuccess }) {
     const result = await login(username.trim(), password)
     setSubmitting(false)
     if (result.success) {
-      onSuccess()
+      // FIXED: Palitan na yung URL, hindi lang yung laman
+      // Kaya pag nag-refresh, nasa /counsellor/dashboard na, hindi na babalik sa login
+      if (onSuccess) onSuccess()
+      navigate('/counsellor/dashboard', { replace: true })
     } else {
       setError(result.message)
       if (result.locked) setLocked(true)
@@ -34,8 +38,7 @@ export default function CounsellorLogin({ onSuccess }) {
           </div>
           <h1 className="text-[18px] font-bold text-gray-900">Counsellor Login</h1>
           <p className="text-[13px] text-gray-500 mt-1 leading-snug">
-            Guidance and Counseling Office
-            <br />
+            Guidance and Counseling Office <br />
             <span className="text-gray-400">CvSU Imus Campus</span>
           </p>
         </div>
@@ -95,7 +98,11 @@ export default function CounsellorLogin({ onSuccess }) {
             </p>
           )}
 
-          <button type="submit" disabled={submitting || locked} className={`w-full py-3.5 rounded-full text-[14.5px] font-semibold mt-4 transition-all ${submitting || locked ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#085041] text-white hover:bg-[#063a2e]'}`}>
+          <button
+            type="submit"
+            disabled={submitting || locked}
+            className={`w-full py-3.5 rounded-full text-[14.5px] font-semibold mt-4 transition-all ${submitting || locked ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-[#085041] text-white hover:bg-[#063a2e]'}`}
+          >
             {submitting ? 'Signing in...' : locked ? 'Account Locked — Try Again in 30 mins' : 'Sign In'}
           </button>
 

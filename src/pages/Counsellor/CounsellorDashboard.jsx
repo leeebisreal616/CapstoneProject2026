@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { logout, getCounsellor } from '../../utils/counsellorAuth'
+import { useState, useEffect } from 'react'
+import { logout, getCounsellor, updateCounsellorPhoto } from '../../utils/counsellorAuth'
 import Overview from './Overview'
 import Appointments from './Appointments'
 import InventorySubmissions from './Inventory'
@@ -9,63 +9,20 @@ import AnnouncementsManagement from './Announcements'
 import StudentDirectory from './StudentsDirectory'
 import CounsellorReport from './CounsellorReport'
 
+const API = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
+
 const Icon = {
-  overview: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10m-9 11h4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  appointments: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  inventory: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  assessment: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  modules: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  announcements: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  students: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 1.13a4 4 0 00-3-3.87M17 12a4 4 0 100-8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  report: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M3 3v18h18M7 15v-4M11 19v-8M15 13V7M19 17v-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  menu: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  x: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}>
-      <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  logout: (c) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}>
-      <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
+  overview: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10m-9 11h4" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  appointments: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  inventory: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  assessment: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  modules: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  announcements: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  students: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 1.13a4 4 0 00-3-3.87M17 12a4 4 0 100-8" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  report: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M3 3v18h18M7 15v-4M11 19v-8M15 13V7M19 17v-6" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  menu: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  x: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={c}><path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" /></svg>),
+  logout: (c) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={c}><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" strokeLinecap="round" strokeLinejoin="round" /></svg>),
 }
 
 const navItems = [
@@ -80,15 +37,57 @@ const navItems = [
 ]
 
 function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsellor }) {
-  const initial = (counsellor?.name || counsellor?.username || 'G').charAt(0).toUpperCase()
+  const getInitials = (name) => {
+    if (!name) return 'G'
+    const parts = name.trim().split(' ').filter(Boolean)
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+  }
+  const initial = getInitials(counsellor?.name)
+
+  const [showProfile, setShowProfile] = useState(false)
+  // FIXED: Per-user only. No more fallback to global localStorage 'counsellor_photo' / 'admin_photo'
+  // Kaya hindi na mag-cross yung pic ni Jervin kay Hazel.
+  const [photo, setPhoto] = useState(counsellor?.profile_photo || '')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+
+  // FIXED: Pag nagpalit ng naka-login na counsellor, magpalit din ng photo
+  useEffect(() => {
+    setPhoto(counsellor?.profile_photo || '')
+  }, [counsellor?.admin_id, counsellor?.id, counsellor?.profile_photo])
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadError('')
+    try {
+      const fd = new FormData()
+      fd.append('photo', file)
+      fd.append('username', counsellor?.username || counsellor?.email || '')
+      fd.append('admin_id', counsellor?.admin_id || counsellor?.id || '')
+      const res = await fetch(`${API}/counsellor/upload_profile_photo.php`, {
+        method: 'POST',
+        body: fd
+      })
+      const j = await res.json()
+      if (!j.success) throw new Error(j.message || 'Upload failed')
+
+      setPhoto(j.photo_url)
+      updateCounsellorPhoto(j.photo_url)
+    } catch (err) {
+      setUploadError('Could not upload photo. Try again.')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
 
   return (
     <>
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-[2px]" onClick={() => setMobileOpen(false)} />
-      )}
+      {mobileOpen && (<div className="fixed inset-0 bg-black/40 z-40 lg:hidden backdrop-blur-[2px]" onClick={() => setMobileOpen(false)} />)}
       <div className={`fixed top-0 left-0 h-screen w-[264px] bg-[#085041] flex flex-col z-50 transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:sticky shrink-0`}>
-        {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5">
           <div className="w-10 h-10 rounded-[12px] bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
             <img src="/gco-seal.png" alt="GCO" className="w-full h-full object-cover" />
@@ -97,22 +96,14 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
             <p className="text-white text-[14px] font-bold tracking-tight">GCO Counsellor</p>
             <p className="text-white/50 text-[11px] font-medium">CvSU Imus Campus</p>
           </div>
-          <button className="ml-auto lg:hidden w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70" onClick={() => setMobileOpen(false)}>
-            {Icon.x('w-3.5 h-3.5')}
-          </button>
+          <button className="ml-auto lg:hidden w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70" onClick={() => setMobileOpen(false)}>{Icon.x('w-3.5 h-3.5')}</button>
         </div>
-
-        {/* Nav */}
         <div className="flex-1 overflow-y-auto py-2 px-3 flex flex-col gap-1">
           <p className="text-white/40 text-[10px] font-bold tracking-[0.12em] uppercase px-3 pb-1.5 pt-1">Menu</p>
           {navItems.map((item) => {
             const isActive = view === item.id
             return (
-              <button
-                key={item.id}
-                onClick={() => { setView(item.id); setMobileOpen(false) }}
-                className={`flex items-center gap-3 px-3 py-[9px] rounded-[12px] text-[13px] font-medium transition-all ${isActive ? 'bg-white text-[#085041] shadow-[0_4px_16px_rgba(0,0,0,0.15)] font-semibold' : 'text-white/65 hover:text-white hover:bg-white/10'}`}
-              >
+              <button key={item.id} onClick={() => { setView(item.id); setMobileOpen(false) }} className={`flex items-center gap-3 px-3 py-[9px] rounded-[12px] text-[13px] font-medium transition-all ${isActive ? 'bg-white text-[#085041] shadow-[0_4px_16px_rgba(0,0,0,0.15)] font-semibold' : 'text-white/65 hover:text-white hover:bg-white/10'}`}>
                 {item.icon('w-[18px] h-[18px] shrink-0')}
                 <span className="flex-1 text-left">{item.label}</span>
                 {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#085041]" />}
@@ -120,21 +111,45 @@ function Sidebar({ view, setView, mobileOpen, setMobileOpen, onLogout, counsello
             )
           })}
         </div>
-
-        {/* Counsellor + Logout */}
         <div className="px-3 pb-4 pt-2">
-          <div className="bg-white/[0.08] border border-white/10 rounded-[14px] p-3 mb-2 flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#085041] text-[12px] font-bold shrink-0">{initial}</div>
-            <div className="min-w-0 leading-tight">
+          <button onClick={() => setShowProfile(true)} className="bg-white/[0.08] border border-white/10 rounded-[14px] p-3 mb-2 flex items-center gap-2.5 w-full text-left hover:bg-white/[0.14] transition cursor-pointer">
+            {photo ? (
+              <img src={photo.startsWith('http') ? photo : `https://cheerful-magenta-fly-38.hostingersite.com${photo}`} className="w-9 h-9 rounded-full object-cover shrink-0" alt="Profile" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#085041] text-[12px] font-bold shrink-0">{initial}</div>
+            )}
+            <div className="min-w-0 leading-tight flex-1">
               <p className="text-white text-[12.5px] font-semibold truncate">{counsellor?.name || counsellor?.username || 'Counsellor'}</p>
               <p className="text-white/50 text-[11px] truncate">Counsellor Portal</p>
             </div>
-          </div>
+            <span className="text-white/60 text-[12px] shrink-0">✏️</span>
+          </button>
           <button onClick={onLogout} className="flex items-center gap-2.5 text-white/60 text-[12px] font-medium px-3 py-2 rounded-[12px] w-full hover:text-white hover:bg-white/10 transition-colors">
             {Icon.logout('w-4 h-4')} Logout
           </button>
         </div>
       </div>
+
+      {showProfile && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 bg-black/40 backdrop-blur-[2px]" onClick={e => e.target === e.currentTarget && setShowProfile(false)}>
+          <div className="bg-white rounded-[20px] p-6 w-full max-w-[320px] shadow-2xl text-center">
+            <div className="relative w-24 h-24 mx-auto">
+              {photo ? (
+                <img src={photo.startsWith('http') ? photo : `https://cheerful-magenta-fly-38.hostingersite.com${photo}`} className="w-24 h-24 rounded-full object-cover border-4 border-[#E1F5EE]" alt="Profile" />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-[#E1F5EE] flex items-center justify-center text-[28px] font-bold text-[#085041]">{initial}</div>
+              )}
+              <label htmlFor="counsellor-photo-upload" className="absolute bottom-0 right-0 w-8 h-8 bg-[#085041] text-white rounded-full flex items-center justify-center cursor-pointer text-[14px] shadow hover:bg-[#06382D]">📷</label>
+              <input id="counsellor-photo-upload" type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+            </div>
+            <p className="font-bold text-[15px] mt-3 text-gray-900">{counsellor?.name || counsellor?.username || 'Counsellor'}</p>
+            <p className="text-[12px] text-gray-500 truncate">{counsellor?.username || counsellor?.email || ''}</p>
+            <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">{uploading ? 'Uploading...' : 'Click 📷 to change photo. This photo will show in your sidebar.'}</p>
+            {uploadError && <p className="text-[11px] text-red-600 mt-1">{uploadError}</p>}
+            <button onClick={() => setShowProfile(false)} className="mt-4 w-full bg-[#085041] text-white py-2.5 rounded-full text-[13px] font-bold hover:bg-[#06382D]">Done</button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
@@ -143,7 +158,6 @@ export default function CounsellorDashboard({ onLogout }) {
   const [view, setView] = useState('overview')
   const [mobileOpen, setMobileOpen] = useState(false)
   const counsellor = getCounsellor()
-
   const views = {
     overview: <Overview setView={setView} />,
     appointments: <Appointments />,
@@ -154,15 +168,12 @@ export default function CounsellorDashboard({ onLogout }) {
     students: <StudentDirectory />,
     report: <CounsellorReport />,
   }
-
   return (
     <div className="flex min-h-screen bg-[#F4F7F5] font-sans">
       <Sidebar view={view} setView={setView} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} onLogout={() => { logout(); onLogout?.() }} counsellor={counsellor} />
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="lg:hidden sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center gap-2.5">
-          <button className="w-9 h-9 rounded-[10px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shadow-sm" onClick={() => setMobileOpen(true)}>
-            {Icon.menu('w-4 h-4')}
-          </button>
+          <button className="w-9 h-9 rounded-[10px] bg-white border border-gray-200 flex items-center justify-center text-gray-600 shadow-sm" onClick={() => setMobileOpen(true)}>{Icon.menu('w-4 h-4')}</button>
           <p className="text-[13px] font-bold text-gray-900 tracking-tight">GCO Counsellor</p>
           <span className="ml-auto text-[11px] text-gray-400 font-medium">CvSU Imus</span>
         </div>

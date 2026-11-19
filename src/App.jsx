@@ -100,14 +100,53 @@ function StudentLayout() {
   )
 }
 
-// Gated counsellor area
+// FIXED: Gated counsellor area - may totoong /login at /dashboard routes na
 function CounsellorArea() {
   const [authed, setAuthed] = useState(isLoggedIn())
-  useEffect(() => { setAuthed(isLoggedIn()) }, [])
-  if (!authed) {
-    return <CounsellorLogin onSuccess={() => setAuthed(true)} />
-  }
-  return <CounsellorDashboard onLogout={() => setAuthed(false)} />
+
+  useEffect(() => {
+    setAuthed(isLoggedIn())
+  }, [])
+
+  return (
+    <Routes>
+      {/* Pag nasa /counsellor/login ka at naka-login ka na, lipat ka sa dashboard */}
+      <Route
+        path="login"
+        element={
+          authed
+            ? <Navigate to="/counsellor/dashboard" replace />
+            : <CounsellorLogin onSuccess={() => setAuthed(true)} />
+        }
+      />
+      {/* Pag nasa /counsellor/dashboard ka at hindi ka naka-login, balik ka sa login */}
+      <Route
+        path="dashboard"
+        element={
+          authed
+            ? <CounsellorDashboard onLogout={() => setAuthed(false)} />
+            : <Navigate to="/counsellor/login" replace />
+        }
+      />
+      {/* Default: /counsellor -> kung naka-login dashboard, kung hindi login */}
+      <Route
+        path=""
+        element={
+          authed
+            ? <Navigate to="/counsellor/dashboard" replace />
+            : <Navigate to="/counsellor/login" replace />
+        }
+      />
+      <Route
+        path="*"
+        element={
+          authed
+            ? <Navigate to="/counsellor/dashboard" replace />
+            : <Navigate to="/counsellor/login" replace />
+        }
+      />
+    </Routes>
+  )
 }
 
 export default function App() {
@@ -124,11 +163,14 @@ export default function App() {
         <Route path="/counsellor/*" element={<CounsellorArea />} />
 
         {/* STUDENT AREA - PINAKADULO LANG DAPAT TO */}
-        <Route path="/*" element={
-          <RequireStudentAuth>
-            <StudentLayout />
-          </RequireStudentAuth>
-        } />
+        <Route
+          path="/*"
+          element={
+            <RequireStudentAuth>
+              <StudentLayout />
+            </RequireStudentAuth>
+          }
+        />
       </Routes>
     </ErrorBoundary>
   )

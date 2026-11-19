@@ -1,10 +1,9 @@
-// Counsellor auth - connects to localhost / XAMPP backend
-const API = 'http://localhost/gco-api/counsellor'
+// Counsellor auth - connects to Hostinger backend
+const API = 'https://cheerful-magenta-fly-38.hostingersite.com/api/counsellor'
 const SESSION_KEY = 'gco_counsellor'
 const ACCESS_KEY = 'gco_counsellor_access'
 const REFRESH_KEY = 'gco_counsellor_refresh'
 const EXPIRES_KEY = 'gco_counsellor_expires'
-
 const SERVER_ERROR = 'Cannot connect to server. Check if XAMPP (Apache) is running.'
 
 function saveSession(data) {
@@ -12,6 +11,10 @@ function saveSession(data) {
   localStorage.setItem(ACCESS_KEY, data.access_token)
   if (data.refresh_token) localStorage.setItem(REFRESH_KEY, data.refresh_token)
   localStorage.setItem(EXPIRES_KEY, String(Date.now() + data.expires_in * 1000))
+  // FIXED: Burahin yung mga lumang keys na nagko-cause ng cross-user pic
+  localStorage.removeItem('counsellor')
+  localStorage.removeItem('counsellor_photo')
+  localStorage.removeItem('admin_photo')
 }
 
 export async function login(username, password) {
@@ -50,6 +53,23 @@ export async function refreshAccessToken() {
   }
 }
 
+// FIXED: Helper para i-update yung photo sa TAMANG key (gco_counsellor)
+// Gagamitin to ng Dashboard para hindi na magkamali ng key
+export function updateCounsellorPhoto(photoUrl) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SESSION_KEY) || '{}')
+    saved.profile_photo = photoUrl
+    localStorage.setItem(SESSION_KEY, JSON.stringify(saved))
+    // Linisin yung mga lumang keys
+    localStorage.removeItem('counsellor')
+    localStorage.removeItem('counsellor_photo')
+    localStorage.removeItem('admin_photo')
+    return saved
+  } catch {
+    return null
+  }
+}
+
 export function logout() {
   localStorage.removeItem(SESSION_KEY)
   localStorage.removeItem(ACCESS_KEY)
@@ -61,6 +81,10 @@ export function logout() {
   localStorage.removeItem('gco_admin_refresh')
   localStorage.removeItem('gco_admin_expires')
   sessionStorage.removeItem('gco_admin_session')
+  // FIXED: Burahin din yung mga legacy counsellor keys na nagko-cross ng pic
+  localStorage.removeItem('counsellor')
+  localStorage.removeItem('counsellor_photo')
+  localStorage.removeItem('admin_photo')
 }
 
 export function isLoggedIn() {
@@ -87,7 +111,6 @@ export function getCounsellor() {
 // ============================================================
 // FORGOT / RESET PASSWORD
 // ============================================================
-
 export async function requestPasswordReset(username) {
   try {
     const res = await fetch(`${API}/forgot-password.php`, {
