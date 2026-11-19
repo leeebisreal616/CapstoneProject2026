@@ -21,6 +21,50 @@ import CounsellorForgotPassword from './pages/Counsellor/CounsellorForgotPasswor
 import CounsellorResetPassword from './pages/Counsellor/CounsellorResetPassword'
 import { isLoggedIn } from './utils/counsellorAuth'
 
+// --- DYNAMIC TAB TITLE - GAYA NG Messenger | Facebook ---
+// Page | GCO System
+function usePageTitle() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const path = location.pathname
+
+    const titles = {
+      // STUDENT
+      '/': 'Home | GCO System',
+      '/login': 'Student Login | GCO System',
+      '/register': 'Register | GCO System',
+      '/initial-assessment': 'Initial Assessment | GCO System',
+      '/assessment': 'Initial Assessment | GCO System',
+      '/modules': 'Modules | GCO System',
+      '/book-appointment': 'Book Appointment | GCO System',
+      '/counseling': 'Book Appointment | GCO System',
+      '/appointment-history': 'Appointment History | GCO System',
+      '/inventory': 'Home | GCO System',
+
+      // COUNSELLOR - LOGIN / FORGOT
+      '/counsellor/login': 'Counsellor Login | GCO System',
+      '/counsellor/forgot-password': 'Forgot Password | GCO System',
+      '/counsellor/reset-password': 'Reset Password | GCO System',
+
+      // COUNSELLOR - DASHBOARD TABS
+      '/counsellor': 'Dashboard | GCO System',
+      '/counsellor/dashboard': 'Dashboard | GCO System',
+      '/counsellor/appointments': 'Appointments | GCO System',
+      '/counsellor/inventory': 'Inventory | GCO System',
+      '/counsellor/assessments': 'Assessment Results | GCO System',
+      '/counsellor/assessment-results': 'Assessment Results | GCO System',
+      '/counsellor/modules': 'Modules | GCO System',
+      '/counsellor/announcements': 'Announcements | GCO System',
+      '/counsellor/students': 'Students Directory | GCO System',
+      '/counsellor/students-directory': 'Students Directory | GCO System',
+      '/counsellor/reports': 'Reports | GCO System',
+    }
+
+    document.title = titles[path] || 'GCO System'
+  }, [location.pathname])
+}
+
 // Toast Context
 export const ToastContext = createContext(null)
 export const useToast = () => useContext(ToastContext)
@@ -106,16 +150,13 @@ function CounsellorArea() {
   useEffect(() => {
     setAuthed(isLoggedIn())
   }, [])
-
   // Isang component lang para sa lahat ng counsellor pages
   // Yung loob ng CounsellorDashboard ang magbasa ng URL para malaman kung anong tab
   const DashboardPage = <CounsellorDashboard onLogout={() => setAuthed(false)} />
   const GuardedDashboard = authed ? DashboardPage : <Navigate to="/counsellor/login" replace />
-
   return (
     <Routes>
       <Route path="login" element={ authed ? <Navigate to="/counsellor/dashboard" replace /> : <CounsellorLogin onSuccess={() => setAuthed(true)} /> } />
-
       {/* LAHAT NG TABS, MAY SARILING ROUTE NA - HINDI NA BABALIK SA /dashboard */}
       <Route path="dashboard" element={GuardedDashboard} />
       <Route path="appointments" element={GuardedDashboard} />
@@ -127,7 +168,6 @@ function CounsellorArea() {
       <Route path="students" element={GuardedDashboard} />
       <Route path="students-directory" element={GuardedDashboard} />
       <Route path="reports" element={GuardedDashboard} />
-
       {/* Default: /counsellor -> kung naka-login dashboard, kung hindi login */}
       <Route path="" element={ authed ? <Navigate to="/counsellor/dashboard" replace /> : <Navigate to="/counsellor/login" replace /> } />
       <Route path="*" element={ authed ? <Navigate to="/counsellor/dashboard" replace /> : <Navigate to="/counsellor/login" replace /> } />
@@ -136,6 +176,8 @@ function CounsellorArea() {
 }
 
 export default function App() {
+  usePageTitle()
+
   return (
     <ErrorBoundary>
       <Routes>
