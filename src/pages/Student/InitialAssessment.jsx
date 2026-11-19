@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 
 // LOCAL: D:\xampp\htdocs\gco-api
-const BASE = 'http://localhost/gco-api/assessment_results'
-const INVENTORY_BASE = 'http://localhost/gco-api/student_profile'
+const BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api/assessment_results'
+const INVENTORY_BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api/student_profile'
 // LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
 // const BASE = 'https://gco-api.infinityfreeapp.com/assessment_results'
 

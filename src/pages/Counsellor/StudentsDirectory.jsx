@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 
-const BASE = 'http://localhost/gco-api'
+const BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
 
 function formatCourse(course, year) {
   const c = String(course || 'N/A').trim()

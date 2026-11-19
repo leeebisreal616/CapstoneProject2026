@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { IconCounseling, IconModules, IconAssessment, IconChevronRight } from '../../components/Icons'
 
 // LOCAL: D:\xampp\htdocs\gco-api
-const BASE = 'http://localhost/gco-api'
+const BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
 // LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
 // const BASE = 'https://gco-api.infinityfreeapp.com'
 

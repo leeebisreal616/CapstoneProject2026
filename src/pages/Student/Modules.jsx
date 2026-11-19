@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const BASE = 'http://localhost/gco-api'
+const BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
 const STORAGE_KEY = 'gco_read_modules'
 
 const catLabel = {

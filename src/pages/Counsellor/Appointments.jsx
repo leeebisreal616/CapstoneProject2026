@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const BASE = 'http://localhost/gco-api'
+const BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
 
 const CONCERN_TYPES = ['Academic', 'Psychological', 'Personal-Social-Emotional', 'Career']
 

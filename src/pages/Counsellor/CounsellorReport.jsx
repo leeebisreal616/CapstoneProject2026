@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 
-const BASE = 'http://localhost/gco-api'
+const BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
 
 function formatDate(d) {
   const dt = new Date(d)

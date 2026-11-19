@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-const API = 'http://localhost/gco-api'
+const API = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
 
 function Icon({ name, className }) {
   const paths = {
@@ -112,7 +112,10 @@ export default function Overview({ setView }) {
   )
 
   const pendingReviews = useMemo(
-    () => inventory.filter(i => normalizeStatus(i.status) === 'pending'),
+    () => inventory.filter(i => {
+  const s = normalizeStatus(i.status)
+  return s === 'pending' || s === 'pending review' || s.includes('pending')
+    }),
     [inventory]
   )
 

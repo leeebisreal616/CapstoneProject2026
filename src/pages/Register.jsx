@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 
 // LOCAL: D:\xampp\htdocs\gco-api
-const BASE = 'http://localhost/gco-api'
+const BASE = 'https://cheerful-magenta-fly-38.hostingersite.com/api'
 // LIVE: InfinityFree - ibalik mo to pag magde-deploy ka
 // const BASE = 'https://gco-api.infinityfreeapp.com'
 
